@@ -153,6 +153,7 @@ final class TabSwitcher: ObservableObject {
 
 /// The frosted recency list shown over the terminal while Ctrl is held.
 struct TabSwitcherHUD: View {
+    @ObservedObject private var chromeFont = ChromeFont.shared
     @ObservedObject var switcher: TabSwitcher
     @ObservedObject var store: TerminalSessionStore
     @Environment(\.colorScheme) private var colorScheme

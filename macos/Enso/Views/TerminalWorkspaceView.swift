@@ -79,6 +79,7 @@ struct TerminalWorkspaceView: View {
 /// anywhere wake hint. No button — focusing the tab is what wakes it,
 /// same as clicking its sidebar row.
 private struct SleepingTabCard: View {
+    @ObservedObject private var chromeFont = ChromeFont.shared
     let session: TerminalSession
     let wake: () -> Void
 
@@ -94,7 +95,7 @@ private struct SleepingTabCard: View {
                 .padding(.bottom, 6)
 
             Text("This tab is sleeping")
-                .font(Font.custom("ABC Diatype", size: NSFont.preferredFont(forTextStyle: .title3).pointSize).weight(.semibold))
+                .font(PaletteFont.custom(size: NSFont.preferredFont(forTextStyle: .title3).pointSize, weight: .semibold))
 
             Text(summary)
                 .font(PaletteFont.primary())
@@ -106,7 +107,7 @@ private struct SleepingTabCard: View {
                 .frame(maxWidth: 420)
 
             Text("Click anywhere to wake")
-                .font(Font.custom("ABC Diatype", size: 11))
+                .font(PaletteFont.custom(size: 11))
                 .foregroundStyle(.tertiary)
                 .padding(.top, 10)
         }

@@ -906,6 +906,7 @@ struct PaletteItem: Identifiable {
 // MARK: - View
 
 struct CommandCenterView: View {
+    @ObservedObject private var chromeFont = ChromeFont.shared
     @ObservedObject var center: CommandCenter
     @FocusState private var searchFocused: Bool
     @Environment(\.openWindow) private var openWindow
@@ -1033,6 +1034,7 @@ struct CommandCenterView: View {
 /// ⌘T palette and the Ctrl-Tab HUD. Hover and tap handling stay at the
 /// call sites.
 struct PaletteRowView: View {
+    @ObservedObject private var chromeFont = ChromeFont.shared
     @Environment(\.colorScheme) private var colorScheme
 
     let icon: PaletteItem.Icon
@@ -1139,31 +1141,39 @@ struct PaletteRowView: View {
     }
 }
 
-/// The chrome shares the terminal's type family for a consistent voice.
+/// One type scale keeps the chrome consistent across surfaces.
+@MainActor
 enum PaletteFont {
     /// Gentle letterspacing keeps chrome text airy.
     static let tracking: CGFloat = 0.25
 
+    static func custom(size: CGFloat, weight: Font.Weight = .regular) -> Font {
+        if let family = ChromeFont.shared.family {
+            return Font.custom(family, size: size).weight(weight)
+        }
+        return .system(size: size, weight: weight)
+    }
+
     /// The chrome's whole type scale; hierarchy within it comes from weight and
     /// ink. Sidebar row titles and names.
     static func primary(_ weight: Font.Weight = .regular) -> Font {
-        Font.custom("ABC Diatype", size: 13).weight(weight)
+        custom(size: 13, weight: weight)
     }
 
     /// Row titles in the Command Center and the tab switcher, which float over
     /// the terminal and read a step larger than the sidebar.
     static func paletteRow(_ weight: Font.Weight = .regular) -> Font {
-        Font.custom("ABC Diatype", size: 14).weight(weight)
+        custom(size: 14, weight: weight)
     }
 
     /// Row context, section headers and hints.
     static func secondary(_ weight: Font.Weight = .regular) -> Font {
-        Font.custom("ABC Diatype", size: 12).weight(weight)
+        custom(size: 12, weight: weight)
     }
 
     /// The Command Center's search field.
     static func input(_ weight: Font.Weight = .regular) -> Font {
-        Font.custom("ABC Diatype", size: 16).weight(weight)
+        custom(size: 16, weight: weight)
     }
 }
 

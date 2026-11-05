@@ -1,10 +1,11 @@
 import AppKit
 
-// Renders the Ombú app icon: ABC Diatype Mono's ó cut into eight horizontal
+// Renders the Ombú app icon: a monospaced ó cut into eight horizontal
 // bars after IBM's 1972 mark, the bar ends rounded and softly glowing like a
 // tube, white on a near-black squircle with a faint rim. Writes 1024 masters plus a contact sheet;
 // slice the chosen master with sips into both appiconsets.
-// Usage: swiftc scripts/make-icon.swift -o /tmp/make-icon && /tmp/make-icon <out-dir> [shape-mask.png]
+// Usage: swiftc scripts/make-icon.swift -o /tmp/make-icon && /tmp/make-icon <out-dir> [shape-mask.png] [mono-family] [sans-family]
+// The shipped icon was rendered with a licensed monospaced family that is not part of this repo.
 
 let outDir = CommandLine.arguments[1]
 try! FileManager.default.createDirectory(atPath: outDir, withIntermediateDirectories: true)
@@ -26,6 +27,8 @@ func font(_ family: String, bold: Bool, size: CGFloat) -> NSFont {
 
 var tileTint: NSColor? = nil
 let shapeMaskPath = CommandLine.arguments.count > 2 ? CommandLine.arguments[2] : "macos/Enso/Assets.xcassets/AppIconNext.appiconset/icon_512x512@2x.png"
+let monoFamily = CommandLine.arguments.count > 3 ? CommandLine.arguments[3] : "Menlo"
+let sansFamily = CommandLine.arguments.count > 4 ? CommandLine.arguments[4] : "Helvetica Neue"
 let shapeMask: CGImage = {
     guard let img = NSImage(contentsOfFile: shapeMaskPath), let cg = img.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
         FileHandle.standardError.write(Data("missing shape mask: \(shapeMaskPath)\n".utf8)); exit(1)
@@ -132,7 +135,7 @@ func flowTile(_ m: NSBitmapImageRep, cols: Int, seed: Int = 1, halo: CGFloat = 0
         blur = out
     }
     let ramp = Array(rampS)
-    let f = font("ABC Diatype Mono", bold: false, size: cw / 0.6 * 0.92)
+    let f = font(monoFamily, bold: false, size: cw / 0.6 * 0.92)
     var rng = UInt64(seed)
     func rnd() -> CGFloat { rng = rng &* 6364136223846793005 &+ 1442695040888963407; return CGFloat((rng >> 33) % 1000) / 1000 }
     return tile { ctx in
@@ -171,7 +174,7 @@ func ringMask(outer: CGFloat, inner: CGFloat) -> NSBitmapImageRep {
 }
 // Bowl of the o centred on the tile, with a smaller hand-set accent above it.
 func drawO(size: CGFloat, centerY: CGFloat, accentWidth: CGFloat, accentLen: CGFloat, gap: CGFloat, accentX: CGFloat) {
-    let f = font("ABC Diatype", bold: true, size: size)
+    let f = font(sansFamily, bold: true, size: size)
     let a = NSAttributedString(string: "o", attributes: [.font: f, .foregroundColor: NSColor.white])
     let line = CTLineCreateWithAttributedString(a)
     let ctx = NSGraphicsContext.current!.cgContext
@@ -276,7 +279,7 @@ func roundCorners(_ rep: NSBitmapImageRep, radius: CGFloat) -> NSBitmapImageRep 
 
 // IBM 1972: the glyph itself, cut into evenly spaced horizontal bars, no glow.
 // `rounded` draws each bar as capsules so its left and right ends are half-circles.
-func ibmTile(bars: Int, duty: CGFloat, size: CGFloat, rounded: Bool = false, radius: CGFloat = 0.5, glow: CGFloat = 0, family: String = "ABC Diatype Mono") -> NSBitmapImageRep {
+func ibmTile(bars: Int, duty: CGFloat, size: CGFloat, rounded: Bool = false, radius: CGFloat = 0.5, glow: CGFloat = 0, family: String = monoFamily) -> NSBitmapImageRep {
     let f = font(family, bold: true, size: size)
     let a = NSAttributedString(string: "\u{F3}", attributes: [.font: f, .foregroundColor: NSColor.white])
     let line = CTLineCreateWithAttributedString(a)

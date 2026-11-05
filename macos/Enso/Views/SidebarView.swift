@@ -3,6 +3,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct SidebarView: View {
+    @ObservedObject private var chromeFont = ChromeFont.shared
     @ObservedObject var store: TerminalSessionStore
     @StateObject private var folderGitStatus = FolderGitStatusModel()
 
@@ -916,6 +917,7 @@ private enum SidebarDisplayEntry: Identifiable {
 }
 
 private struct SpacePage: View {
+    @ObservedObject private var chromeFont = ChromeFont.shared
     @ObservedObject var store: TerminalSessionStore
     @ObservedObject var folderGitStatus: FolderGitStatusModel
     @ObservedObject private var namer = TabAutoNamer.shared
@@ -2494,6 +2496,7 @@ struct SpaceIndicatorIcon: View {
 // MARK: - Space editor
 
 struct SpaceEditorSheet: View {
+    @ObservedObject private var chromeFont = ChromeFont.shared
     enum Mode: Equatable {
         case create
         case edit(SidebarSpace)
@@ -2542,12 +2545,12 @@ struct SpaceEditorSheet: View {
                 .padding(.bottom, 14)
 
             Text(isCreating ? "Create a Space" : "Edit Space")
-                .font(Font.custom("ABC Diatype", size: 17).weight(.semibold))
+                .font(PaletteFont.custom(size: 17, weight: .semibold))
                 .padding(.bottom, 14)
 
             TextField("Name your space", text: $name)
                 .textFieldStyle(.plain)
-                .font(Font.custom("ABC Diatype", size: 13.5))
+                .font(PaletteFont.custom(size: 13.5))
                 .focused($nameFocused)
                 .padding(.vertical, 10)
                 .padding(.horizontal, 12)
@@ -2815,7 +2818,7 @@ struct SpaceEditorSheet: View {
                 .foregroundStyle(Theme.text(0.35))
             TextField(prompt, text: text)
                 .textFieldStyle(.plain)
-                .font(Font.custom("ABC Diatype", size: 12.5))
+                .font(PaletteFont.custom(size: 12.5))
             if !text.wrappedValue.isEmpty {
                 Button {
                     text.wrappedValue = ""
@@ -3080,6 +3083,7 @@ struct ModalPrimaryButtonStyle: ButtonStyle {
     private struct Styled: View {
         let configuration: Configuration
         let accent: Color?
+        @ObservedObject private var chromeFont = ChromeFont.shared
         @Environment(\.colorScheme) private var scheme
         @State private var hovering = false
 
@@ -3122,6 +3126,7 @@ struct ModalSecondaryButtonStyle: ButtonStyle {
     }
 
     private struct Styled: View {
+        @ObservedObject private var chromeFont = ChromeFont.shared
         let configuration: Configuration
         @State private var hovering = false
 

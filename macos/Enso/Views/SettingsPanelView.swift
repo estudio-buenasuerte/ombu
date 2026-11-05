@@ -47,6 +47,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
 /// window; fixed width, but the height is the user's (contentSize
 /// resizability keeps the width pinned, System Settings style).
 struct SettingsPanelView: View {
+    @ObservedObject private var chromeFont = ChromeFont.shared
     @ObservedObject var panel: SettingsPanel
     @Environment(\.dismissWindow) private var dismissWindow
 
@@ -325,6 +326,7 @@ private struct DeveloperSettings: View {
 #endif
 
 private struct AppearanceSettings: View {
+    @ObservedObject private var chromeFont = ChromeFont.shared
     @AppStorage("AppleFontSmoothing") private var fontSmoothing = 0
     @AppStorage(AppAppearance.defaultsKey) private var appearanceRaw = AppAppearance.system.rawValue
 
@@ -345,11 +347,26 @@ private struct AppearanceSettings: View {
             Text("This affects your app. The terminal follows your Ghostty theme.")
         }
 
-        Section("Text") {
+        Section {
+            LabeledContent("Interface font") {
+                HStack {
+                    Text(chromeFont.family ?? "System")
+                        .foregroundStyle(.secondary)
+                    Button("Edit config") {
+                        editOmbuConfig()
+                    }
+                }
+            }
+            .font(PaletteFont.primary())
+
             Toggle(isOn: smoothingOn) {
                 Text("Font smoothing")
                 Text("Thickens small light-on-dark text. Takes effect after relaunch.")
             }
+        } header: {
+            Text("Text")
+        } footer: {
+            Text("font-family in ~/.config/ombu/config. The default is the system font.")
         }
 
         Section("Terminal theme") {
@@ -361,6 +378,24 @@ private struct AppearanceSettings: View {
                 Text("Follows your Ghostty config")
                 Text("Fonts, colors, and theme come from Ghostty's config file. Changes apply on relaunch.")
             }
+        }
+    }
+
+    private func editOmbuConfig() {
+        let fm = FileManager.default
+        let configFile = chromeFont.configURL
+        if !fm.fileExists(atPath: configFile.path) {
+            try? fm.createDirectory(at: configFile.deletingLastPathComponent(), withIntermediateDirectories: true)
+            fm.createFile(atPath: configFile.path, contents: Data("# font-family = Helvetica Neue\n".utf8))
+        }
+        chromeFont.reload()
+
+        if let editor = NSWorkspace.shared.urlForApplication(toOpen: UTType.plainText) {
+            NSWorkspace.shared.open(
+                [configFile], withApplicationAt: editor, configuration: NSWorkspace.OpenConfiguration()
+            )
+        } else {
+            NSWorkspace.shared.open(configFile)
         }
     }
 

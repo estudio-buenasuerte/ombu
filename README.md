@@ -31,7 +31,7 @@ So Ombú is, honestly, a merge: Enso's look, feel and feature set, Flow's way of
 
 - **🌿 The branch, right there.** A quiet second line under the workspace name shows the checked-out branch and a dot when the tree is dirty, kept fresh by a file watcher rather than polling.
 
-- **🅰 ABC Diatype.** The chrome is set in Diatype when it is installed, and falls back to the system font when it is not. The terminal itself keeps whatever your Ghostty config says.
+- **🅰 Your own interface font.** The chrome uses the system font unless `~/.config/ombu/config` says otherwise, Ghostty-style: `font-family = Helvetica Neue`. Edits apply live. The terminal itself keeps whatever your Ghostty config says.
 
 - **No updater.** Builds come from this repo. Enso's release channel stays Enso's.
 
@@ -70,7 +70,7 @@ Ombú takes Enso releases by merging their tags, never by rebasing, and bumps Gh
 
 ## Credits
 
-Terminal core by [Ghostty](https://ghostty.org). Almost everything you can see is [Enso](https://github.com/amanfromsolan/enso), by Aman. The ideas about projects and agents are [Flow](https://getflowterm.app)'s, by thetinygoat. The icon is set in [ABC Diatype Mono](https://abcdinamo.com/typefaces/diatype) by Dinamo; the typeface itself is not included.
+Terminal core by [Ghostty](https://ghostty.org). Almost everything you can see is [Enso](https://github.com/amanfromsolan/enso), by Aman. The ideas about projects and agents are [Flow](https://getflowterm.app)'s, by thetinygoat. The icon is an ó from a monospaced typeface, cut into eight bars the way IBM's 1972 mark was.
 
 ## License
 
