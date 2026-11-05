@@ -26,6 +26,7 @@ struct Session: Codable, Equatable {
         var layout: Layout
         /// Index of the zoomed pane among the layout's terminals, in order.
         var zoomedPane: Int?
+        var customName: String? = nil
     }
 
     indirect enum Layout: Codable, Equatable {
@@ -91,7 +92,8 @@ extension WorkspaceStoreModel {
                     tabs: workspace.tabs.map { tab in
                         Session.Tab(
                             layout: Session.Layout(node: tab.panes.root),
-                            zoomedPane: tab.panes.zoomed.flatMap { zoomed in tab.panes.leaves.firstIndex { $0 === zoomed } })
+                            zoomedPane: tab.panes.zoomed.flatMap { zoomed in tab.panes.leaves.firstIndex { $0 === zoomed } },
+                            customName: tab.customName)
                     },
                     selectedTab: workspace.tabs.firstIndex { $0 === places.selectedTab(in: workspace) } ?? 0,
                     directory: workspace.tabs.isEmpty ? workspace.lastDirectory : nil)
@@ -118,6 +120,7 @@ extension WorkspaceStoreModel {
                     let zoomed = tab.zoomedPane.flatMap { leaves.indices.contains($0) ? leaves[$0] : nil }
                     if let zoomed { panes.toggleZoom(zoomed) }
                     let restored = TabModel(panes: panes, focused: zoomed ?? first)
+                    restored.customName = tab.customName
                     workspace.add(restored)
                     if tabIndex == saved.selectedTab { selectedTab = restored }
                 }

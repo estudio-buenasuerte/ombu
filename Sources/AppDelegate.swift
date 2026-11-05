@@ -327,6 +327,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 owner.reveal(surface)
             case .command(let command):
                 perform(command, in: window)
+            case .moveTab(let id):
+                window.moveSelectedTab(to: id)
             }
         }
     }
@@ -342,6 +344,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case .settings: showSettings()
         case .reloadConfiguration: reloadConfig()
         case .keyboardShortcuts: showKeyboardShortcuts(nil)
+        case .renameTab: window.renameSelectedTab()
+        case .duplicateTab: window.duplicateSelectedTab()
+        case .closeOtherTabs:
+            if let surface = window.focusedSurface { window.closeTabs(.others, from: surface) }
+        case .copyWorkingDirectory:
+            guard let directory = window.focusedSurface?.workingDirectory, !directory.isEmpty else { return }
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(directory, forType: .string)
+            window.controller.terminalArea.focusSelectedSurface()
+        case .openInFinder:
+            guard let directory = window.focusedSurface?.workingDirectory, !directory.isEmpty else { return }
+            window.controller.terminalArea.focusSelectedSurface()
+            NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: directory, isDirectory: true)])
         }
     }
 

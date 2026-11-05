@@ -29,6 +29,7 @@ final class TabModel<Leaf: PaneLeaf> {
     let id = UUID()
     let panes: PaneTreeModel<Leaf>
     private(set) var focusedLeaf: Leaf
+    var customName: String?
 
     init(leaf: Leaf) {
         panes = PaneTreeModel(leaf: leaf)
@@ -41,7 +42,7 @@ final class TabModel<Leaf: PaneLeaf> {
     }
 
     var title: String {
-        focusedLeaf.displayTitle
+        customName ?? focusedLeaf.displayTitle
     }
 
     func focus(_ leaf: Leaf) {
@@ -202,6 +203,18 @@ final class WorkspaceStoreModel<Leaf: PaneLeaf> {
         guard source != destination else { return true }
         workspaces.remove(at: source)
         workspaces.insert(workspace, at: destination)
+        notifyChanged()
+        return true
+    }
+
+    @discardableResult
+    func move(_ tab: TabModel<Leaf>, to workspace: WorkspaceModel<Leaf>) -> Bool {
+        guard workspaces.contains(where: { $0 === workspace }),
+              let source = workspaces.first(where: { $0.tabs.contains { $0 === tab } }) else { return false }
+        guard source !== workspace else { return true }
+        source.remove(tab)
+        workspace.add(tab)
+        selected = workspace
         notifyChanged()
         return true
     }

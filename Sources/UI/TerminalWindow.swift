@@ -136,6 +136,32 @@ final class TerminalWindow: NSObject, NSWindowDelegate {
         controller.beginRename(of: workspace)
     }
 
+    func renameSelectedTab() {
+        guard let tab = store.selected?.selectedTab else { return }
+        if let content = window?.contentViewController as? WindowContentViewController, content.isSidebarHidden {
+            content.isSidebarHidden = false
+            window?.layoutIfNeeded()
+        }
+        controller.sidebar.beginRename(of: tab)
+    }
+
+    func duplicateSelectedTab() {
+        guard let workspace = store.selected, let tab = workspace.selectedTab,
+              let index = workspace.tabs.firstIndex(where: { $0 === tab }) else { return }
+        let duplicate = TerminalTab(leaf: makeSurface(in: tab.focusedSurface.workingDirectory, workspace: workspace.id))
+        workspace.add(duplicate)
+        workspace.move(duplicate, toInsertionIndex: index + 1)
+        store.notifyChanged()
+        controller.terminalArea.focusSelectedSurface()
+    }
+
+    func moveSelectedTab(to id: UUID) {
+        guard let tab = store.selected?.selectedTab,
+              let workspace = store.workspaces.first(where: { $0.id == id }),
+              store.move(tab, to: workspace) else { return }
+        controller.terminalArea.focusSelectedSurface()
+    }
+
     func cycleWorkspace(by offset: Int) {
         guard let selected = store.selected,
               let index = store.workspaces.firstIndex(where: { $0 === selected }) else { return }
@@ -481,6 +507,15 @@ extension TerminalWindow: SidebarViewControllerDelegate {
         store.notifyChanged()
         // Return ends the rename while AppKit is still closing the field, and
         // it then hands focus to the window, so the terminal takes it after.
+        DispatchQueue.main.async { [weak self] in
+            self?.controller.terminalArea.focusSelectedSurface()
+        }
+    }
+
+    func sidebar(_ sidebar: SidebarViewController, didFinishRenaming tab: TerminalTab, to name: String?) {
+        if let name { tab.customName = name.isEmpty ? nil : name }
+        store.notifyChanged()
+        // AppKit finishes dismissing the field before the terminal takes focus.
         DispatchQueue.main.async { [weak self] in
             self?.controller.terminalArea.focusSelectedSurface()
         }

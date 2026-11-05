@@ -1,6 +1,116 @@
 import XCTest
 
 final class WorkspaceTests: XCTestCase {
+    func testCustomTabNameOverridesPaneTitlesUntilCleared() {
+        let first = FakeLeaf("shell"), second = FakeLeaf("editor")
+        let tab = TestTab(leaf: first)
+        tab.panes.split(first, direction: .right, with: second)
+        tab.customName = "Notes"
+        XCTAssertEqual(tab.title, "Notes")
+        tab.focus(second)
+        second.title = "changed"
+        XCTAssertEqual(tab.title, "Notes")
+        tab.customName = nil
+        XCTAssertEqual(tab.title, "changed")
+    }
+
+    func testMovingTabToAnotherWorkspaceAppendsAndSelectsItBeforeNotifying() {
+        let store = TestStore()
+        let source = store.addWorkspace()
+        let neighbor = TestTab(leaf: FakeLeaf("neighbor"))
+        let first = FakeLeaf("first"), focused = FakeLeaf("focused")
+        let tab = TestTab(leaf: first)
+        tab.panes.split(first, direction: .right, with: focused)
+        tab.focus(focused)
+        tab.panes.toggleZoom(focused)
+        tab.customName = "Moving"
+        source.add(neighbor)
+        source.add(tab)
+        let target = store.addWorkspace()
+        let existing = TestTab(leaf: FakeLeaf("existing"))
+        target.add(existing)
+        store.select(source)
+        var changes = 0
+        store.onChange = {
+            changes += 1
+            XCTAssertEqual(source.tabs.map(\.id), [neighbor.id])
+            XCTAssertTrue(source.selectedTab === neighbor)
+            XCTAssertEqual(target.tabs.map(\.id), [existing.id, tab.id])
+            XCTAssertTrue(store.selected === target)
+            XCTAssertTrue(target.selectedTab === tab)
+        }
+
+        XCTAssertTrue(store.move(tab, to: target))
+        XCTAssertEqual(changes, 1)
+        XCTAssertTrue(tab.focusedLeaf === focused)
+        XCTAssertTrue(tab.panes.zoomed === focused)
+        XCTAssertEqual(tab.title, "Moving")
+        XCTAssertTrue(store.workspace(containing: first)?.0 === target)
+        XCTAssertTrue(store.workspace(containing: focused)?.1 === tab)
+    }
+
+    func testMovingLastTabLeavesSourceEmptyWithItsDirectory() {
+        let store = TestStore()
+        let source = store.addWorkspace()
+        let tab = TestTab(leaf: FakeLeaf(workingDirectory: "/project"))
+        source.add(tab)
+        let target = store.addWorkspace()
+        store.select(source)
+
+        XCTAssertTrue(store.move(tab, to: target))
+        XCTAssertEqual(store.workspaces.map(\.id), [source.id, target.id])
+        XCTAssertTrue(source.tabs.isEmpty)
+        XCTAssertNil(source.selectedTab)
+        XCTAssertEqual(source.directory, "/project")
+        XCTAssertTrue(store.selected === target)
+        XCTAssertTrue(target.selectedTab === tab)
+    }
+
+    func testInvalidAndSameWorkspaceTabMovesDoNotNotifyOrChangeSelection() {
+        let store = TestStore()
+        let source = store.addWorkspace()
+        let tab = TestTab(leaf: FakeLeaf())
+        source.add(tab)
+        let target = store.addWorkspace()
+        let foreign = WorkspaceModel<FakeLeaf>()
+        let foreignTab = TestTab(leaf: FakeLeaf())
+        foreign.add(foreignTab)
+        var changes = 0
+        store.onChange = { changes += 1 }
+
+        XCTAssertTrue(store.move(tab, to: source))
+        XCTAssertFalse(store.move(tab, to: foreign))
+        XCTAssertFalse(store.move(foreignTab, to: target))
+        XCTAssertEqual(changes, 0)
+        XCTAssertEqual(source.tabs.map(\.id), [tab.id])
+        XCTAssertTrue(target.tabs.isEmpty)
+        XCTAssertEqual(foreign.tabs.map(\.id), [foreignTab.id])
+        XCTAssertTrue(store.selected === target)
+        store.remove(target)
+        changes = 0
+        XCTAssertFalse(store.move(tab, to: target))
+        XCTAssertEqual(changes, 0)
+        XCTAssertEqual(source.tabs.map(\.id), [tab.id])
+    }
+
+    func testClosingOtherTabsKeepsSelectedTabAndItsPanes() {
+        let workspace = WorkspaceModel<FakeLeaf>()
+        let tabs = (0..<3).map { _ in TestTab(leaf: FakeLeaf()) }
+        tabs.forEach(workspace.add)
+        let selected = tabs[1]
+        let split = FakeLeaf()
+        selected.panes.split(selected.focusedLeaf, direction: .right, with: split)
+        selected.focus(split)
+        workspace.select(selected)
+
+        workspace.tabs(closing: .others, from: selected).forEach(workspace.remove)
+
+        XCTAssertEqual(workspace.tabs.map(\.id), [selected.id])
+        XCTAssertTrue(workspace.selectedTab === selected)
+        XCTAssertTrue(selected.focusedLeaf === split)
+        XCTAssertEqual(selected.panes.leaves.count, 2)
+    }
+
     func testTabTitleUsesDirectoryUntilTheShellSetsATitle() {
         let leaf = FakeLeaf(workingDirectory: NSHomeDirectory() + "/Code/flow")
         let tab = TestTab(leaf: leaf)

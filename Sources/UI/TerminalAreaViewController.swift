@@ -61,7 +61,7 @@ final class TerminalAreaViewController: NSViewController {
         header.isHidden = tab == nil
         emptyState.isHidden = tab != nil
         if let tab {
-            header.show(process: tabProcess(tab), surface: tab.focusedSurface)
+            header.show(process: tabProcess(tab), surface: tab.focusedSurface, title: tab.title)
         }
         paneTreeView.show(tab?.panes)
         paneTreeView.updateDimming(focused: tab?.focusedSurface)
@@ -189,7 +189,7 @@ final class PaneHeaderView: SurfaceFillView {
         fatalError("init(coder:) is not supported")
     }
 
-    func show(process: TabProcess?, surface: TerminalSurfaceView) {
+    func show(process: TabProcess?, surface: TerminalSurfaceView, title name: String) {
         switch process?.symbol {
         case .image(let name)?:
             icon.image = NSImage(named: "Agents/\(name)")
@@ -200,7 +200,6 @@ final class PaneHeaderView: SurfaceFillView {
         }
         icon.symbolConfiguration = .init(pointSize: 11, weight: .medium)
         let directory = surface.workingDirectory?.abbreviatingHome
-        let name = surface.title.isEmpty ? (surface.workingDirectory?.folderName ?? "Terminal") : surface.title
         title.stringValue = name
         // The shell names its prompt after the directory, in which case the
         // directory is already on show.

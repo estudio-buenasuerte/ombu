@@ -5,6 +5,7 @@ protocol SidebarViewControllerDelegate: AnyObject {
     func sidebar(_ sidebar: SidebarViewController, didSelect tab: TerminalTab, in workspace: Workspace)
     /// The name is nil when the rename was abandoned.
     func sidebar(_ sidebar: SidebarViewController, didFinishRenaming workspace: Workspace, to name: String?)
+    func sidebar(_ sidebar: SidebarViewController, didFinishRenaming tab: TerminalTab, to name: String?)
     func sidebar(_ sidebar: SidebarViewController, wantsClose workspace: Workspace)
     func sidebar(_ sidebar: SidebarViewController, wantsClose tab: TerminalTab, in workspace: Workspace)
     func sidebar(_ sidebar: SidebarViewController, wantsNewTabIn workspace: Workspace)
@@ -67,6 +68,7 @@ final class SidebarViewController: NSViewController, NSTableViewDataSource, NSTa
     /// Its row is left alone by reloads, which would otherwise replace the
     /// cell and discard the name being typed.
     private var renaming: Workspace?
+    private var renamingTab: TerminalTab?
 
     init(store: WorkspaceStore) {
         self.store = store
@@ -163,6 +165,9 @@ final class SidebarViewController: NSViewController, NSTableViewDataSource, NSTa
             if let renaming, let row = row(of: renaming) {
                 indexes.remove(row)
             }
+            if let renamingTab, let row = row(of: renamingTab) {
+                indexes.remove(row)
+            }
             tableView.reloadData(forRowIndexes: indexes, columnIndexes: [0])
             // Reloads arrive with every shell prompt. Animated height changes
             // overlap and leave cells taller than their rows, which then snap
@@ -176,8 +181,10 @@ final class SidebarViewController: NSViewController, NSTableViewDataSource, NSTa
             // abandoned rather than saved half typed.
             for row in 0..<tableView.numberOfRows {
                 (tableView.view(atColumn: 0, row: row, makeIfNecessary: false) as? WorkspaceCellView)?.cancelRenaming()
+                (tableView.view(atColumn: 0, row: row, makeIfNecessary: false) as? TabCellView)?.cancelRenaming()
             }
             renaming = nil
+            renamingTab = nil
             tableView.reloadData()
         }
         if let workspace = store.selected, let tab = workspace.selectedTab, let row = row(of: tab) {
@@ -273,7 +280,7 @@ final class SidebarViewController: NSViewController, NSTableViewDataSource, NSTa
     }
 
     func beginRename(of workspace: Workspace) {
-        guard renaming == nil, let row = row(of: workspace) else { return }
+        guard renaming == nil, renamingTab == nil, let row = row(of: workspace) else { return }
         tableView.scrollRowToVisible(row)
         guard let cell = tableView.view(atColumn: 0, row: row, makeIfNecessary: true) as? WorkspaceCellView else { return }
         renaming = workspace
@@ -282,6 +289,19 @@ final class SidebarViewController: NSViewController, NSTableViewDataSource, NSTa
             self.renaming = nil
             let exists = self.store.workspaces.contains { $0 === workspace }
             self.delegate?.sidebar(self, didFinishRenaming: workspace, to: name.isEmpty || !exists ? nil : name)
+        }
+    }
+
+    func beginRename(of tab: TerminalTab) {
+        guard renaming == nil, renamingTab == nil, let row = row(of: tab) else { return }
+        tableView.scrollRowToVisible(row)
+        guard let cell = tableView.view(atColumn: 0, row: row, makeIfNecessary: true) as? TabCellView else { return }
+        renamingTab = tab
+        cell.beginRenaming { [weak self] name in
+            guard let self else { return }
+            self.renamingTab = nil
+            let exists = self.store.workspaces.contains { $0.tabs.contains { $0 === tab } }
+            self.delegate?.sidebar(self, didFinishRenaming: tab, to: exists ? name : nil)
         }
     }
 
@@ -787,17 +807,21 @@ private final class WorkspaceCellView: SidebarCellView, NSTextFieldDelegate {
 }
 
 /// A tab under its workspace: what it runs, its title, and its agent's dot.
-private final class TabCellView: SidebarCellView {
+private final class TabCellView: SidebarCellView, NSTextFieldDelegate {
     let titleLabel = NSTextField(labelWithString: "")
     private let icon = NSImageView()
     private let closeButton = symbolButton("xmark", description: "Close tab", size: 9)
     private let agentDot = AgentDotView()
+    private var onRename: ((String?) -> Void)?
+    private var nameBeforeRenaming = ""
+    private var clickMonitor: Any?
     var onClose: (() -> Void)?
 
     init() {
         super.init(frame: .zero)
         titleLabel.font = .systemFont(ofSize: 12.5)
         titleLabel.lineBreakMode = .byTruncatingTail
+        titleLabel.delegate = self
         icon.translatesAutoresizingMaskIntoConstraints = false
         icon.imageScaling = .scaleProportionallyUpOrDown
         closeButton.target = self
@@ -868,6 +892,66 @@ private final class TabCellView: SidebarCellView {
 
     @objc private func closeTapped() {
         onClose?()
+    }
+
+    func beginRenaming(_ completion: @escaping (String?) -> Void) {
+        onRename = completion
+        nameBeforeRenaming = titleLabel.stringValue
+        titleLabel.isEditable = true
+        titleLabel.isBezeled = true
+        titleLabel.bezelStyle = .roundedBezel
+        titleLabel.drawsBackground = true
+        titleLabel.textColor = .labelColor
+        window?.makeFirstResponder(titleLabel)
+        titleLabel.currentEditor()?.selectAll(nil)
+        // The title bar and terminal leave the field focused when clicked.
+        clickMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] event in
+            guard let self else { return event }
+            let inField = event.window === window
+                && titleLabel.bounds.contains(titleLabel.convert(event.locationInWindow, from: nil))
+            if !inField { window?.makeFirstResponder(nil) }
+            return event
+        }
+    }
+
+    func cancelRenaming() {
+        onRename = nil
+        endRenaming(keepingName: false)
+    }
+
+    func control(_ control: NSControl, textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
+        guard commandSelector == #selector(NSResponder.cancelOperation(_:)) else { return false }
+        let completion = onRename
+        onRename = nil
+        endRenaming(keepingName: false)
+        completion?(nil)
+        return true
+    }
+
+    func controlTextDidEndEditing(_ notification: Notification) {
+        let completion = onRename
+        onRename = nil
+        let name = titleLabel.stringValue.trimmingCharacters(in: .whitespaces)
+        endRenaming(keepingName: true)
+        completion?(name)
+    }
+
+    private func endRenaming(keepingName: Bool) {
+        if let clickMonitor {
+            NSEvent.removeMonitor(clickMonitor)
+            self.clickMonitor = nil
+        }
+        if titleLabel.currentEditor() != nil {
+            titleLabel.abortEditing()
+        }
+        if !keepingName {
+            titleLabel.stringValue = nameBeforeRenaming
+        }
+        titleLabel.isEditable = false
+        titleLabel.isBezeled = false
+        titleLabel.drawsBackground = false
+        let current = isCurrent
+        isCurrent = current
     }
 }
 

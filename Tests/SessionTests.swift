@@ -1,6 +1,41 @@
 import XCTest
 
 final class SessionTests: XCTestCase {
+    func testCustomTabNamesSurviveFileRoundTripAndClearing() throws {
+        let store = TestStore()
+        let workspace = store.addWorkspace()
+        let named = TestTab(leaf: FakeLeaf(workingDirectory: "/named"))
+        named.customName = "My tab"
+        workspace.add(named)
+        workspace.add(TestTab(leaf: FakeLeaf(workingDirectory: "/unnamed")))
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("session.json")
+        XCTAssertTrue(Session(windows: [store.snapshot()]).save(to: url))
+        let loaded = try XCTUnwrap(Session.load(from: url))
+        XCTAssertEqual(loaded.windows[0].workspaces[0].tabs.map(\.customName), ["My tab", nil])
+        let restored = TestStore()
+        restored.restore(loaded.windows[0]) { id, directory, _ in FakeLeaf(id: id, workingDirectory: directory) }
+        let restoredTab = restored.workspaces[0].tabs[0]
+        XCTAssertEqual(restoredTab.customName, "My tab")
+        XCTAssertEqual(restoredTab.title, "My tab")
+        restoredTab.customName = nil
+        XCTAssertEqual(restoredTab.title, "/named")
+        XCTAssertNil(restored.snapshot().workspaces[0].tabs[0].customName)
+    }
+
+    func testOlderSessionWithoutTabCustomNameStillRestores() throws {
+        let store = TestStore()
+        store.addWorkspace().add(TestTab(leaf: FakeLeaf(workingDirectory: "/old")))
+        let data = try JSONEncoder().encode(Session(windows: [store.snapshot()]))
+        XCTAssertFalse(String(decoding: data, as: UTF8.self).contains("customName"))
+        let decoded = try JSONDecoder().decode(Session.self, from: data)
+        let restored = TestStore()
+        restored.restore(decoded.windows[0]) { id, directory, _ in FakeLeaf(id: id, workingDirectory: directory) }
+        XCTAssertNil(restored.selected?.selectedTab?.customName)
+        XCTAssertEqual(restored.selected?.selectedTab?.title, "/old")
+    }
+
     func testRestoreKeepsEmptyWorkspacesInPlace() {
         let firstTab = Session.Tab(layout: .terminal(id: UUID(), workingDirectory: "/first"), zoomedPane: nil)
         let secondTab = Session.Tab(layout: .terminal(id: UUID(), workingDirectory: "/second"), zoomedPane: nil)

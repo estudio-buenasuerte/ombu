@@ -12,6 +12,7 @@ enum CommandCenter {
 
     enum Command: CaseIterable, Equatable {
         case newWorkspace, splitRight, splitDown, closeTab, renameWorkspace, toggleSidebar, settings, reloadConfiguration, keyboardShortcuts
+        case renameTab, duplicateTab, closeOtherTabs, copyWorkingDirectory, openInFinder
 
         var title: String {
             switch self {
@@ -24,6 +25,11 @@ enum CommandCenter {
             case .settings: "Settings"
             case .reloadConfiguration: "Reload Configuration"
             case .keyboardShortcuts: "Keyboard Shortcuts"
+            case .renameTab: "Rename Tab"
+            case .duplicateTab: "Duplicate Tab"
+            case .closeOtherTabs: "Close Other Tabs"
+            case .copyWorkingDirectory: "Copy Working Directory"
+            case .openInFinder: "Open in Finder"
             }
         }
 
@@ -38,6 +44,11 @@ enum CommandCenter {
             case .settings: "gearshape"
             case .reloadConfiguration: "arrow.clockwise"
             case .keyboardShortcuts: "keyboard"
+            case .renameTab: "pencil"
+            case .duplicateTab: "plus.square.on.square"
+            case .closeOtherTabs: "xmark.square"
+            case .copyWorkingDirectory: "doc.on.doc"
+            case .openInFinder: "folder"
             }
         }
 
@@ -52,7 +63,7 @@ enum CommandCenter {
             case .toggleSidebar: ["⌘", "B"]
             case .settings: ["⌘", ","]
             case .reloadConfiguration: ["⇧", "⌘", ","]
-            case .keyboardShortcuts: []
+            case .keyboardShortcuts, .renameTab, .duplicateTab, .closeOtherTabs, .copyWorkingDirectory, .openInFinder: []
             }
         }
     }
@@ -61,6 +72,7 @@ enum CommandCenter {
         case newTab
         case tab(UUID)
         case command(Command)
+        case moveTab(to: UUID)
     }
 
     struct Entry: Equatable {
@@ -93,10 +105,19 @@ enum CommandCenter {
                 return entry
             }
         }
-        let commands = Command.allCases.map {
+        let hasTab = store.selected?.selectedTab != nil
+        let commands = Command.allCases.filter { command in
+            switch command {
+            case .renameTab, .duplicateTab, .closeOtherTabs, .copyWorkingDirectory, .openInFinder: hasTab
+            default: true
+            }
+        }.map {
             Entry(section: .commands, target: .command($0), title: $0.title, symbol: $0.symbol, shortcut: $0.shortcut)
         }
-        return [newTab] + tabs + commands
+        let moves = hasTab ? store.workspaces.filter { $0 !== store.selected }.map {
+            Entry(section: .commands, target: .moveTab(to: $0.id), title: "Move Tab to \($0.name)", symbol: "arrow.right.square")
+        } : []
+        return [newTab] + tabs + commands + moves
     }
 
     /// The entries matching the query, best first within their sections,
