@@ -2,22 +2,58 @@ import AppKit
 
 protocol SidebarViewControllerDelegate: AnyObject {
     func sidebar(_ sidebar: SidebarViewController, didSelect workspace: Workspace)
+    func sidebar(_ sidebar: SidebarViewController, didSelect tab: TerminalTab, in workspace: Workspace)
     /// The name is nil when the rename was abandoned.
     func sidebar(_ sidebar: SidebarViewController, didFinishRenaming workspace: Workspace, to name: String?)
     func sidebar(_ sidebar: SidebarViewController, wantsClose workspace: Workspace)
+    func sidebar(_ sidebar: SidebarViewController, wantsClose tab: TerminalTab, in workspace: Workspace)
+    func sidebar(_ sidebar: SidebarViewController, wantsNewTabIn workspace: Workspace)
 }
 
-/// The vertical list of workspaces on the left of the window. Each row shows
-/// the workspace name, the working directory of its selected tab, and a dot
-/// for what the agents in its terminals are doing.
-final class SidebarViewController: NSViewController, NSTableViewDataSource, NSTableViewDelegate {
+/// The list on the left of the window. Each workspace is a trunk: a row with
+/// its name, directory and git branch, and under it a row for each of its
+/// tabs, the branches, showing what each one is running and what its agent
+/// is doing.
+final class SidebarViewController: NSViewController, NSTableViewDataSource, NSTableViewDelegate, NSMenuDelegate {
     weak var delegate: SidebarViewControllerDelegate?
-    var agentIndicator: @MainActor (Workspace) -> AgentIndicator? = { _ in nil }
+    var agentIndicator: @MainActor (TerminalTab) -> AgentIndicator? = { _ in nil }
+    /// The agent a tab's hooks report, which outranks what its title says.
+    var runningAgent: @MainActor (TerminalTab) -> String? = { _ in nil }
+
+    enum Row {
+        case workspace(Workspace)
+        case tab(Workspace, TerminalTab)
+
+        var workspace: Workspace {
+            switch self {
+            case .workspace(let workspace), .tab(let workspace, _): workspace
+            }
+        }
+
+        var tab: TerminalTab? {
+            if case .tab(_, let tab) = self { return tab }
+            return nil
+        }
+
+        var isWorkspace: Bool {
+            if case .workspace = self { return true }
+            return false
+        }
+
+        func matches(_ other: Row) -> Bool {
+            switch (self, other) {
+            case (.workspace(let a), .workspace(let b)): a === b
+            case (.tab(_, let a), .tab(_, let b)): a === b
+            default: false
+            }
+        }
+    }
 
     private let store: WorkspaceStore
+    private var rows: [Row] = []
     private let tableView = WorkspaceTableView()
     private let scrollView = NSScrollView()
-    private static let workspacePasteboardType = NSPasteboard.PasteboardType("dev.thetinygoat.flow.workspace")
+    private static let workspacePasteboardType = NSPasteboard.PasteboardType("com.buenasuerte.ombu.workspace")
     private var draggingWorkspace: Workspace?
     private var isReloading = false
     private var hoveredRow = -1
@@ -36,27 +72,25 @@ final class SidebarViewController: NSViewController, NSTableViewDataSource, NSTa
     }
 
     override func loadView() {
-        let column = NSTableColumn(identifier: .init("workspace"))
+        let column = NSTableColumn(identifier: .init("row"))
         column.resizingMask = .autoresizingMask
         tableView.addTableColumn(column)
         tableView.headerView = nil
         tableView.style = .plain
         tableView.backgroundColor = .clear
         tableView.intercellSpacing = .zero
-        tableView.rowHeight = 52
         tableView.dataSource = self
         tableView.delegate = self
-        tableView.allowsEmptySelection = false
+        tableView.allowsEmptySelection = true
         tableView.target = self
-        tableView.action = #selector(selectClickedWorkspace)
+        tableView.action = #selector(selectClickedRow)
         tableView.registerForDraggedTypes([Self.workspacePasteboardType])
         tableView.setDraggingSourceOperationMask(.move, forLocal: true)
         tableView.setDraggingSourceOperationMask([], forLocal: false)
         git.onUpdate = { [weak self] in self?.reloadRows() }
 
         let menu = NSMenu()
-        menu.addItem(withTitle: "Rename Workspace", action: #selector(renameClickedWorkspace), keyEquivalent: "")
-        menu.addItem(withTitle: "Close Workspace", action: #selector(closeClickedWorkspace), keyEquivalent: "")
+        menu.delegate = self
         tableView.menu = menu
 
         scrollView.documentView = tableView
@@ -68,6 +102,7 @@ final class SidebarViewController: NSViewController, NSTableViewDataSource, NSTa
         scrollView.scrollerStyle = .overlay
         NotificationCenter.default.addObserver(self, selector: #selector(keepOverlayScroller), name: NSScroller.preferredScrollerStyleDidChangeNotification, object: nil)
         scrollView.automaticallyAdjustsContentInsets = false
+        scrollView.contentInsets = NSEdgeInsets(top: 6, left: 0, bottom: 10, right: 0)
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         // Scrolling moves rows under a still pointer, so the hovered row is
         // worked out again from where the pointer is.
@@ -75,20 +110,9 @@ final class SidebarViewController: NSViewController, NSTableViewDataSource, NSTa
         NotificationCenter.default.addObserver(self, selector: #selector(updateHoveredRow), name: NSView.boundsDidChangeNotification, object: scrollView.contentView)
         tableView.onPointerMove = { [weak self] in self?.updateHoveredRow() }
 
-        let container = NSVisualEffectView()
-        container.material = .sidebar
-        container.blendingMode = .behindWindow
-        // The sidebar material lets a bright desktop colour the whole sidebar,
-        // so a wash of the window colour keeps only a hint of it.
-        let tint = SidebarTint()
-        tint.translatesAutoresizingMaskIntoConstraints = false
-        container.addSubview(tint)
+        let container = NSView()
         container.addSubview(scrollView)
         NSLayoutConstraint.activate([
-            tint.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            tint.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            tint.topAnchor.constraint(equalTo: container.topAnchor),
-            tint.bottomAnchor.constraint(equalTo: container.bottomAnchor),
             scrollView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
             scrollView.topAnchor.constraint(equalTo: container.topAnchor),
@@ -117,22 +141,29 @@ final class SidebarViewController: NSViewController, NSTableViewDataSource, NSTa
         store.workspaces.forEach { $0.invalidateDerivedNames() }
     }
 
-    private func reloadRows() {
+    /// Titles change with every prompt, so rows are redrawn in place while
+    /// the same workspaces and tabs are listed.
+    func reloadRows() {
         let wasReloading = isReloading
         isReloading = true
         defer { isReloading = wasReloading }
-        if tableView.numberOfRows == store.workspaces.count {
-            var rows = IndexSet(0..<store.workspaces.count)
+        let latest = store.workspaces.flatMap { workspace in
+            [Row.workspace(workspace)] + workspace.tabs.map { Row.tab(workspace, $0) }
+        }
+        let sameRows = latest.count == rows.count && zip(latest, rows).allSatisfy { $0.matches($1) }
+        rows = latest
+        if sameRows, tableView.numberOfRows == rows.count {
+            var indexes = IndexSet(0..<rows.count)
             if let renaming, let row = row(of: renaming) {
-                rows.remove(row)
+                indexes.remove(row)
             }
-            tableView.reloadData(forRowIndexes: rows, columnIndexes: [0])
+            tableView.reloadData(forRowIndexes: indexes, columnIndexes: [0])
             // Reloads arrive with every shell prompt. Animated height changes
             // overlap and leave cells taller than their rows, which then snap
             // back on the next full layout.
             NSAnimationContext.runAnimationGroup { context in
                 context.duration = 0
-                tableView.noteHeightOfRows(withIndexesChanged: rows)
+                tableView.noteHeightOfRows(withIndexesChanged: indexes)
             }
         } else {
             // A full reload replaces every cell, so a rename in progress is
@@ -143,43 +174,91 @@ final class SidebarViewController: NSViewController, NSTableViewDataSource, NSTa
             renaming = nil
             tableView.reloadData()
         }
-        if let selected = store.selected,
-           let row = row(of: selected) {
+        if let workspace = store.selected, let tab = workspace.selectedTab, let row = row(of: tab) {
             tableView.selectRowIndexes([row], byExtendingSelection: false)
+        } else {
+            tableView.deselectAll(nil)
         }
     }
 
     /// Agents change state far more often than rows need rebuilding, so only
-    /// the dots are updated.
-    func updateAgentIndicator(for workspace: Workspace) {
-        guard let row = row(of: workspace),
-              row < tableView.numberOfRows,
-              let cell = tableView.view(atColumn: 0, row: row, makeIfNecessary: false) as? WorkspaceCellView else { return }
-        cell.agentIndicator = agentIndicator(workspace)
+    /// the dot is updated.
+    func updateAgentIndicator(for tab: TerminalTab) {
+        guard let row = row(of: tab),
+              let cell = tableView.view(atColumn: 0, row: row, makeIfNecessary: false) as? TabCellView else { return }
+        cell.agentIndicator = agentIndicator(tab)
     }
 
     private func row(of workspace: Workspace) -> Int? {
-        store.workspaces.firstIndex { $0 === workspace }
+        rows.firstIndex { $0.isWorkspace && $0.workspace === workspace }
     }
 
-    private func workspace(at row: Int) -> Workspace? {
-        store.workspaces.indices.contains(row) ? store.workspaces[row] : nil
+    private func row(of tab: TerminalTab) -> Int? {
+        rows.firstIndex { $0.tab === tab }
     }
 
-    private var clickedWorkspace: Workspace? {
-        workspace(at: tableView.clickedRow)
+    private func row(at index: Int) -> Row? {
+        rows.indices.contains(index) ? rows[index] : nil
+    }
+
+    private var clickedRow: Row? {
+        row(at: tableView.clickedRow)
     }
 
     /// The table sends its action when a press ends without becoming a drag
-    /// or a context menu, which is when a click means switching workspaces.
-    @objc private func selectClickedWorkspace() {
-        guard let workspace = clickedWorkspace, workspace !== store.selected else { return }
-        delegate?.sidebar(self, didSelect: workspace)
+    /// or a context menu, which is when a click means going somewhere.
+    @objc private func selectClickedRow() {
+        go(to: clickedRow)
+    }
+
+    private func go(to row: Row?) {
+        switch row {
+        case .workspace(let workspace):
+            guard workspace !== store.selected else { return }
+            delegate?.sidebar(self, didSelect: workspace)
+        case .tab(let workspace, let tab):
+            guard workspace !== store.selected || workspace.selectedTab !== tab else { return }
+            delegate?.sidebar(self, didSelect: tab, in: workspace)
+        case nil:
+            break
+        }
+    }
+
+    // MARK: Menu
+
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        menu.removeAllItems()
+        switch clickedRow {
+        case .workspace:
+            menu.addItem(withTitle: "New Tab", action: #selector(newTabInClickedWorkspace), keyEquivalent: "")
+            menu.addItem(withTitle: "Rename Workspace", action: #selector(renameClickedWorkspace), keyEquivalent: "")
+            menu.addItem(.separator())
+            menu.addItem(withTitle: "Close Workspace", action: #selector(closeClickedWorkspace), keyEquivalent: "")
+        case .tab:
+            menu.addItem(withTitle: "Close Tab", action: #selector(closeClickedTab), keyEquivalent: "")
+        case nil:
+            break
+        }
+    }
+
+    @objc private func newTabInClickedWorkspace() {
+        guard let row = clickedRow else { return }
+        delegate?.sidebar(self, wantsNewTabIn: row.workspace)
     }
 
     @objc private func renameClickedWorkspace() {
-        guard let workspace = clickedWorkspace else { return }
-        beginRename(of: workspace)
+        guard let row = clickedRow else { return }
+        beginRename(of: row.workspace)
+    }
+
+    @objc private func closeClickedWorkspace() {
+        guard let row = clickedRow else { return }
+        delegate?.sidebar(self, wantsClose: row.workspace)
+    }
+
+    @objc private func closeClickedTab() {
+        guard case .tab(let workspace, let tab)? = clickedRow else { return }
+        delegate?.sidebar(self, wantsClose: tab, in: workspace)
     }
 
     func beginRename(of workspace: Workspace) {
@@ -195,33 +274,30 @@ final class SidebarViewController: NSViewController, NSTableViewDataSource, NSTa
         }
     }
 
-    @objc private func closeClickedWorkspace() {
-        guard let workspace = clickedWorkspace else { return }
-        delegate?.sidebar(self, wantsClose: workspace)
-    }
-
-    /// One row at most shows its close button: the row under the pointer.
     @objc private func keepOverlayScroller() {
         scrollView.scrollerStyle = .overlay
     }
 
+    /// One row at most shows its buttons: the row under the pointer.
     @objc private func updateHoveredRow() {
         let row = tableView.hoveredRow
         guard row != hoveredRow else { return }
         hoveredRow = row
         for visible in 0..<tableView.numberOfRows {
-            (tableView.view(atColumn: 0, row: visible, makeIfNecessary: false) as? WorkspaceCellView)?.isHovered = visible == row
+            (tableView.view(atColumn: 0, row: visible, makeIfNecessary: false) as? SidebarCellView)?.isHovered = visible == row
+            (tableView.rowView(atRow: visible, makeIfNecessary: false) as? SidebarRowView)?.isHovered = visible == row
         }
     }
 
     // MARK: NSTableViewDataSource
 
     func numberOfRows(in tableView: NSTableView) -> Int {
-        store.workspaces.count
+        rows.count
     }
 
+    /// Only workspaces are dragged, to reorder them.
     func tableView(_ tableView: NSTableView, pasteboardWriterForRow row: Int) -> NSPasteboardWriting? {
-        guard workspace(at: row) != nil else { return nil }
+        guard self.row(at: row)?.isWorkspace == true else { return nil }
         let item = NSPasteboardItem()
         item.setData(Data(), forType: Self.workspacePasteboardType)
         return item
@@ -229,7 +305,7 @@ final class SidebarViewController: NSViewController, NSTableViewDataSource, NSTa
 
     func tableView(_ tableView: NSTableView, draggingSession session: NSDraggingSession,
                    willBeginAt screenPoint: NSPoint, forRowIndexes rowIndexes: IndexSet) {
-        draggingWorkspace = rowIndexes.first.flatMap { workspace(at: $0) }
+        draggingWorkspace = rowIndexes.first.flatMap { row(at: $0)?.workspace }
     }
 
     private func draggedWorkspace(_ info: NSDraggingInfo) -> Workspace? {
@@ -238,25 +314,37 @@ final class SidebarViewController: NSViewController, NSTableViewDataSource, NSTa
         return draggingWorkspace
     }
 
+    /// Where among the workspaces a drop above a row lands: after every
+    /// workspace whose row comes before it, which puts a drop among a
+    /// workspace's tabs after that workspace.
+    private func workspaceInsertionIndex(forRow row: Int) -> Int {
+        rows.prefix(row).filter(\.isWorkspace).count
+    }
+
+    private func tableRow(forWorkspaceInsertionIndex index: Int) -> Int {
+        guard index < store.workspaces.count else { return rows.count }
+        return row(of: store.workspaces[index]) ?? rows.count
+    }
+
     func tableView(_ tableView: NSTableView, validateDrop info: NSDraggingInfo,
                    proposedRow row: Int, proposedDropOperation dropOperation: NSTableView.DropOperation) -> NSDragOperation {
-        guard draggedWorkspace(info) != nil, (0...store.workspaces.count).contains(row) else { return [] }
-        var index = row
+        guard draggedWorkspace(info) != nil, (0...rows.count).contains(row) else { return [] }
+        var above = row
         if dropOperation == .on {
-            guard store.workspaces.indices.contains(row) else { return [] }
+            guard rows.indices.contains(row) else { return [] }
             let pointer = tableView.convert(info.draggingLocation, from: nil)
-            index = insertionIndex(forDropOn: row, pointerY: pointer.y, rowRect: tableView.rect(ofRow: row))
+            above = insertionIndex(forDropOn: row, pointerY: pointer.y, rowRect: tableView.rect(ofRow: row))
         }
         // Dropping a row back where it is stays allowed, as in Finder, and
         // leaves the order alone.
-        tableView.setDropRow(index, dropOperation: .above)
+        tableView.setDropRow(tableRow(forWorkspaceInsertionIndex: workspaceInsertionIndex(forRow: above)), dropOperation: .above)
         return .move
     }
 
     func tableView(_ tableView: NSTableView, acceptDrop info: NSDraggingInfo,
                    row: Int, dropOperation: NSTableView.DropOperation) -> Bool {
         guard dropOperation == .above, let workspace = draggedWorkspace(info) else { return false }
-        return store.move(workspace, toInsertionIndex: row)
+        return store.move(workspace, toInsertionIndex: workspaceInsertionIndex(forRow: row))
     }
 
     func tableView(_ tableView: NSTableView, draggingSession session: NSDraggingSession,
@@ -268,36 +356,64 @@ final class SidebarViewController: NSViewController, NSTableViewDataSource, NSTa
     // MARK: NSTableViewDelegate
 
     func tableView(_ tableView: NSTableView, rowViewForRow row: Int) -> NSTableRowView? {
-        WorkspaceRowView()
+        let view = SidebarRowView()
+        view.isHovered = row == hoveredRow
+        return view
     }
 
     func tableView(_ tableView: NSTableView, heightOfRow row: Int) -> CGFloat {
-        gitStatus(forRow: row) == nil ? 52 : 68
+        self.row(at: row)?.isWorkspace == true ? 46 : 28
     }
 
-    private func gitStatus(forRow row: Int) -> GitStatus? {
-        guard let directory = workspace(at: row)?.selectedTab?.focusedSurface.workingDirectory else { return nil }
+    private func gitStatus(for workspace: Workspace) -> GitStatus? {
+        guard let directory = workspace.selectedTab?.focusedSurface.workingDirectory else { return nil }
         return git.status(for: directory)
     }
 
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
-        guard let workspace = workspace(at: row) else { return nil }
-        let identifier = NSUserInterfaceItemIdentifier("workspaceCell")
-        let cell = tableView.makeView(withIdentifier: identifier, owner: nil) as? WorkspaceCellView ?? {
-            let cell = WorkspaceCellView()
-            cell.identifier = identifier
+        switch self.row(at: row) {
+        case .workspace(let workspace):
+            let identifier = NSUserInterfaceItemIdentifier("workspace")
+            let cell = tableView.makeView(withIdentifier: identifier, owner: nil) as? WorkspaceCellView ?? {
+                let cell = WorkspaceCellView()
+                cell.identifier = identifier
+                return cell
+            }()
+            cell.titleLabel.stringValue = workspace.name
+            cell.isCurrent = workspace === store.selected
+            cell.show(directory: workspace.selectedTab?.focusedSurface.workingDirectory, git: gitStatus(for: workspace))
+            cell.isHovered = row == hoveredRow
+            cell.onClose = { [weak self, weak workspace] in
+                guard let self, let workspace, self.store.workspaces.contains(where: { $0 === workspace }) else { return }
+                self.delegate?.sidebar(self, wantsClose: workspace)
+            }
+            cell.onNewTab = { [weak self, weak workspace] in
+                guard let self, let workspace, self.store.workspaces.contains(where: { $0 === workspace }) else { return }
+                self.delegate?.sidebar(self, wantsNewTabIn: workspace)
+            }
             return cell
-        }()
-        cell.titleLabel.stringValue = workspace.name
-        cell.subtitleLabel.stringValue = workspace.selectedTab?.focusedSurface.workingDirectory?.abbreviatingHome ?? ""
-        cell.gitStatus = gitStatus(forRow: row)
-        cell.isHovered = row == hoveredRow
-        cell.agentIndicator = agentIndicator(workspace)
-        cell.onClose = { [weak self, weak workspace] in
-            guard let self, let workspace, self.store.workspaces.contains(where: { $0 === workspace }) else { return }
-            self.delegate?.sidebar(self, wantsClose: workspace)
+        case .tab(let workspace, let tab):
+            let identifier = NSUserInterfaceItemIdentifier("tab")
+            let cell = tableView.makeView(withIdentifier: identifier, owner: nil) as? TabCellView ?? {
+                let cell = TabCellView()
+                cell.identifier = identifier
+                return cell
+            }()
+            cell.titleLabel.stringValue = tab.title
+            cell.isCurrent = workspace === store.selected && workspace.selectedTab === tab
+            cell.process = runningAgent(tab).flatMap(TabProcess.init(rawValue:))
+                ?? tab.panes.surfaces.lazy.compactMap(\.process).first { $0.isAgent }
+                ?? tab.focusedSurface.process
+            cell.agentIndicator = agentIndicator(tab)
+            cell.isHovered = row == hoveredRow
+            cell.onClose = { [weak self, weak workspace, weak tab] in
+                guard let self, let workspace, let tab, workspace.tabs.contains(where: { $0 === tab }) else { return }
+                self.delegate?.sidebar(self, wantsClose: tab, in: workspace)
+            }
+            return cell
+        case nil:
+            return nil
         }
-        return cell
     }
 
     /// Mouse presses may become drags. Accessibility selection can proceed
@@ -307,10 +423,8 @@ final class SidebarViewController: NSViewController, NSTableViewDataSource, NSTa
     }
 
     func tableViewSelectionDidChange(_ notification: Notification) {
-        guard !isReloading, !tableView.isHandlingMouseDown,
-              let workspace = workspace(at: tableView.selectedRow) else { return }
-        guard workspace !== store.selected else { return }
-        delegate?.sidebar(self, didSelect: workspace)
+        guard !isReloading, !tableView.isHandlingMouseDown else { return }
+        go(to: row(at: tableView.selectedRow))
     }
 }
 
@@ -368,37 +482,63 @@ private final class WorkspaceTableView: NSTableView {
     }
 }
 
-/// A wash of the window colour over the sidebar. It sets the colour again
-/// in each layer update, since an NSBox keeps the one it first drew with
-/// when the window turns light or dark.
-private final class SidebarTint: NSView {
-    override var wantsUpdateLayer: Bool { true }
-
-    override func updateLayer() {
-        layer?.backgroundColor = NSColor.windowBackgroundColor.withAlphaComponent(0.8).cgColor
+/// Selection and hover are drawn as a pill set in from the sidebar's edges,
+/// never as a full-width bar.
+private final class SidebarRowView: NSTableRowView {
+    var isHovered = false {
+        didSet { if isHovered != oldValue { needsDisplay = true } }
     }
-}
 
-private final class WorkspaceRowView: NSTableRowView {
+    private var pill: NSBezierPath {
+        NSBezierPath(roundedRect: bounds.insetBy(dx: 8, dy: 1), xRadius: Theme.rowRadius, yRadius: Theme.rowRadius)
+    }
+
     override func drawSelection(in dirtyRect: NSRect) {
-        NSColor.labelColor.withAlphaComponent(0.1).setFill()
-        bounds.fill()
+        Theme.selection.setFill()
+        pill.fill()
+    }
+
+    override func drawBackground(in dirtyRect: NSRect) {
+        guard isHovered, !isSelected else { return }
+        Theme.ink(0.06).setFill()
+        pill.fill()
     }
 }
 
-private final class WorkspaceCellView: NSTableCellView, NSTextFieldDelegate {
+/// What the workspace and tab cells share: the buttons that appear on hover.
+private class SidebarCellView: NSTableCellView {
+    var isHovered = false {
+        didSet { updateHoverViews() }
+    }
+
+    func updateHoverViews() {}
+
+    static func symbolButton(_ symbol: String, description: String, size: CGFloat) -> NSButton {
+        let button = NSButton(image: NSImage(systemSymbolName: symbol, accessibilityDescription: description)!, target: nil, action: nil)
+        button.isBordered = false
+        button.imagePosition = .imageOnly
+        button.symbolConfiguration = .init(pointSize: size, weight: .semibold)
+        button.contentTintColor = .secondaryLabelColor
+        button.toolTip = description
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.setContentHuggingPriority(.required, for: .horizontal)
+        return button
+    }
+}
+
+private final class WorkspaceCellView: SidebarCellView, NSTextFieldDelegate {
     let titleLabel = NSTextField(labelWithString: "")
-    let subtitleLabel = NSTextField(labelWithString: "")
-    private let gitLabel = NSTextField(labelWithString: "")
-    private let closeButton = NSButton(image: NSImage(systemSymbolName: "xmark", accessibilityDescription: "Close workspace")!, target: nil, action: nil)
-    private let agentDot = AgentDotView()
+    private let detailLabel = NSTextField(labelWithString: "")
+    private let closeButton = symbolButton("xmark", description: "Close workspace", size: 9)
+    private let newTabButton = symbolButton("plus", description: "New tab", size: 10)
     private var onRename: ((String) -> Void)?
     private var nameBeforeRenaming = ""
     private var clickMonitor: Any?
     var onClose: (() -> Void)?
+    var onNewTab: (() -> Void)?
 
     /// The dragged row shows what it is rather than what the pointer happens
-    /// to reveal on it, so the agent dot stays visible.
+    /// to reveal on it.
     override var draggingImageComponents: [NSDraggingImageComponent] {
         let wasHovered = isHovered
         isHovered = false
@@ -411,7 +551,7 @@ private final class WorkspaceCellView: NSTableCellView, NSTextFieldDelegate {
         let appearance = effectiveAppearance
         let image = NSImage(size: bounds.size, flipped: false) { rect in
             appearance.performAsCurrentDrawingAppearance {
-                let card = NSBezierPath(rect: rect.insetBy(dx: 2, dy: 2))
+                let card = NSBezierPath(roundedRect: rect.insetBy(dx: 2, dy: 2), xRadius: Theme.rowRadius, yRadius: Theme.rowRadius)
                 NSColor.windowBackgroundColor.setFill()
                 card.fill()
                 NSColor.separatorColor.setStroke()
@@ -432,80 +572,63 @@ private final class WorkspaceCellView: NSTableCellView, NSTextFieldDelegate {
         titleLabel.font = .systemFont(ofSize: 13, weight: .semibold)
         titleLabel.lineBreakMode = .byTruncatingTail
         titleLabel.delegate = self
-        subtitleLabel.textColor = .secondaryLabelColor
-        subtitleLabel.font = .monospacedSystemFont(ofSize: 11, weight: .regular)
-        subtitleLabel.lineBreakMode = .byTruncatingMiddle
+        detailLabel.textColor = .secondaryLabelColor
+        detailLabel.font = .monospacedSystemFont(ofSize: 10.5, weight: .regular)
+        detailLabel.lineBreakMode = .byTruncatingMiddle
 
-        gitLabel.font = .monospacedSystemFont(ofSize: 11, weight: .regular)
-        gitLabel.textColor = .secondaryLabelColor
-        gitLabel.lineBreakMode = .byTruncatingTail
-        gitLabel.isHidden = true
-
-        let stack = NSStackView(views: [titleLabel, subtitleLabel, gitLabel])
+        let stack = NSStackView(views: [titleLabel, detailLabel])
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 2
         stack.translatesAutoresizingMaskIntoConstraints = false
         addSubview(stack)
-        closeButton.isBordered = false
-        closeButton.imagePosition = .imageOnly
-        closeButton.symbolConfiguration = .init(pointSize: 9, weight: .semibold)
-        closeButton.contentTintColor = .secondaryLabelColor
-        closeButton.isHidden = true
         closeButton.target = self
         closeButton.action = #selector(closeTapped)
-        closeButton.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(closeButton)
-        addSubview(agentDot)
+        newTabButton.target = self
+        newTabButton.action = #selector(newTabTapped)
+        let buttons = NSStackView(views: [newTabButton, closeButton])
+        buttons.orientation = .horizontal
+        buttons.spacing = 2
+        buttons.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(buttons)
         NSLayoutConstraint.activate([
-            stack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
-            stack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -36),
+            stack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 18),
+            stack.trailingAnchor.constraint(equalTo: buttons.leadingAnchor, constant: -6),
             stack.centerYAnchor.constraint(equalTo: centerYAnchor),
-            titleLabel.widthAnchor.constraint(equalTo: stack.widthAnchor),
-            closeButton.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -12),
-            closeButton.centerYAnchor.constraint(equalTo: titleLabel.centerYAnchor),
-            agentDot.centerXAnchor.constraint(equalTo: closeButton.centerXAnchor),
-            agentDot.centerYAnchor.constraint(equalTo: titleLabel.centerYAnchor),
+            titleLabel.widthAnchor.constraint(lessThanOrEqualTo: stack.widthAnchor),
+            detailLabel.widthAnchor.constraint(lessThanOrEqualTo: stack.widthAnchor),
+            buttons.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -14),
+            buttons.centerYAnchor.constraint(equalTo: centerYAnchor),
         ])
-        updateCloseButton()
+        updateHoverViews()
     }
 
-    var isHovered = false {
-        didSet { updateCloseButton() }
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) is not supported")
     }
 
-    var agentIndicator: AgentIndicator? {
-        get { agentDot.indicator }
-        set {
-            agentDot.indicator = newValue
-            updateCloseButton()
-        }
+    /// The selected workspace's name is full ink; the others step back.
+    var isCurrent = false {
+        didSet { titleLabel.textColor = isCurrent ? .labelColor : .labelColor.withAlphaComponent(0.72) }
     }
 
-    /// The dot and the close button share one spot at the end of the name;
-    /// the close button wins under the pointer.
-    private func updateCloseButton() {
+    override func updateHoverViews() {
         closeButton.isHidden = !isHovered
-        agentDot.isHidden = agentDot.indicator == nil || isHovered
+        newTabButton.isHidden = !isHovered
+    }
+
+    func show(directory: String?, git: GitStatus?) {
+        let branch = git.map { $0.isDirty ? "\($0.branch)*" : $0.branch }
+        let path = directory?.abbreviatingHome
+        detailLabel.stringValue = [branch, path].compactMap { $0 }.joined(separator: "  ·  ")
     }
 
     @objc private func closeTapped() {
         onClose?()
     }
 
-    var gitStatus: GitStatus? {
-        didSet {
-            guard let gitStatus else {
-                gitLabel.isHidden = true
-                return
-            }
-            gitLabel.isHidden = false
-            gitLabel.stringValue = gitStatus.isDirty ? "\(gitStatus.branch)*" : gitStatus.branch
-        }
-    }
-
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) is not supported")
+    @objc private func newTabTapped() {
+        onNewTab?()
     }
 
     /// Return or a click anywhere outside the field keeps the new name and
@@ -521,7 +644,7 @@ private final class WorkspaceCellView: NSTableCellView, NSTextFieldDelegate {
         titleLabel.textColor = .labelColor
         window?.makeFirstResponder(titleLabel)
         titleLabel.currentEditor()?.selectAll(nil)
-        // Clicks on the title bar, the tab strip or empty sidebar space do not
+        // Clicks on the title bar, the terminal or empty sidebar space do not
         // take keyboard focus, so on their own they would leave the field open.
         clickMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] event in
             guard let self else { return event }
@@ -569,5 +692,92 @@ private final class WorkspaceCellView: NSTableCellView, NSTextFieldDelegate {
         titleLabel.isEditable = false
         titleLabel.isBezeled = false
         titleLabel.drawsBackground = false
+        let current = isCurrent
+        isCurrent = current
+    }
+}
+
+/// A tab under its workspace: what it runs, its title, and its agent's dot.
+private final class TabCellView: SidebarCellView {
+    let titleLabel = NSTextField(labelWithString: "")
+    private let icon = NSImageView()
+    private let closeButton = symbolButton("xmark", description: "Close tab", size: 9)
+    private let agentDot = AgentDotView()
+    var onClose: (() -> Void)?
+
+    init() {
+        super.init(frame: .zero)
+        titleLabel.font = .systemFont(ofSize: 12.5)
+        titleLabel.lineBreakMode = .byTruncatingTail
+        icon.translatesAutoresizingMaskIntoConstraints = false
+        icon.imageScaling = .scaleProportionallyUpOrDown
+        closeButton.target = self
+        closeButton.action = #selector(closeTapped)
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(icon)
+        addSubview(titleLabel)
+        addSubview(closeButton)
+        addSubview(agentDot)
+        NSLayoutConstraint.activate([
+            icon.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 22),
+            icon.centerYAnchor.constraint(equalTo: centerYAnchor),
+            icon.widthAnchor.constraint(equalToConstant: 14),
+            icon.heightAnchor.constraint(equalToConstant: 14),
+            titleLabel.leadingAnchor.constraint(equalTo: icon.trailingAnchor, constant: 8),
+            titleLabel.trailingAnchor.constraint(equalTo: closeButton.leadingAnchor, constant: -6),
+            titleLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
+            closeButton.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -14),
+            closeButton.centerYAnchor.constraint(equalTo: centerYAnchor),
+            agentDot.centerXAnchor.constraint(equalTo: closeButton.centerXAnchor),
+            agentDot.centerYAnchor.constraint(equalTo: centerYAnchor),
+        ])
+        process = nil
+        isCurrent = false
+        updateHoverViews()
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) is not supported")
+    }
+
+    var isCurrent = false {
+        didSet {
+            titleLabel.textColor = isCurrent ? .labelColor : .secondaryLabelColor
+            icon.contentTintColor = isCurrent ? .labelColor : .secondaryLabelColor
+        }
+    }
+
+    /// An idle shell shows the terminal glyph; a known tool its own.
+    var process: TabProcess? {
+        didSet {
+            switch process?.symbol {
+            case .image(let name)?:
+                icon.image = NSImage(named: "Agents/\(name)")
+            case .system(let name)?:
+                icon.image = NSImage(systemSymbolName: name, accessibilityDescription: process?.displayName)
+            case nil:
+                icon.image = NSImage(systemSymbolName: "terminal", accessibilityDescription: "Shell")
+            }
+            icon.symbolConfiguration = .init(pointSize: 11, weight: .medium)
+        }
+    }
+
+    var agentIndicator: AgentIndicator? {
+        get { agentDot.indicator }
+        set {
+            agentDot.indicator = newValue
+            updateHoverViews()
+        }
+    }
+
+    /// The dot and the close button share one spot at the end of the row;
+    /// the close button wins under the pointer.
+    override func updateHoverViews() {
+        closeButton.isHidden = !isHovered
+        agentDot.isHidden = agentDot.indicator == nil || isHovered
+    }
+
+    @objc private func closeTapped() {
+        onClose?()
     }
 }

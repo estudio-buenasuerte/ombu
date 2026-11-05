@@ -25,12 +25,16 @@ final class MainWindowController: NSWindowController {
 
         self.content = WindowContentViewController(sidebar: sidebar, content: terminalArea)
 
+        // The frost runs edge to edge, title bar included; the sidebar shows
+        // where the user is, so the title bar shows nothing itself.
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 1100, height: 700),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
             backing: .buffered,
             defer: false)
         window.toolbarStyle = .unified
+        window.titlebarAppearsTransparent = true
+        window.titleVisibility = .hidden
         window.contentViewController = content
         window.setContentSize(NSSize(width: 1100, height: 700))
         window.minSize = NSSize(width: 600, height: 400)
@@ -123,19 +127,17 @@ final class MainWindowController: NSWindowController {
     }
 
     func agentsDidChange(in workspace: Workspace, tab: TerminalTab) {
-        sidebar.updateAgentIndicator(for: workspace)
-        terminalArea.updateAgentIndicator(for: tab)
+        sidebar.updateAgentIndicator(for: tab)
     }
 
+    /// Every tab's row shows its title, whichever workspace it is in.
     func titleDidChange(of surface: TerminalSurfaceView) {
-        guard let workspace = store.selected,
-              workspace.tabs.contains(where: { $0.panes.surfaces.contains { $0 === surface } }) else { return }
-        terminalArea.reloadTabs()
+        sidebar.reloadRows()
         updateWindowTitle()
     }
 
     private func updateWindowTitle() {
-        let workspace = store.selected?.name ?? "Flow"
+        let workspace = store.selected?.name ?? "Ombú"
         let tab = store.selected?.selectedTab?.title
         window?.title = tab.map { "\(workspace) — \($0)" } ?? workspace
     }

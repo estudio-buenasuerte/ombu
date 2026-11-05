@@ -1,9 +1,9 @@
 import AppKit
 
-/// The window's content: the workspace sidebar beside the terminal area. The
-/// sidebar is a plain view with a width rather than a split view item, whose
-/// look AppKit changes between macOS versions, and it has no divider for a
-/// translucent window to show through.
+/// The window's content: the workspace sidebar beside the terminal area, on
+/// one frosted surface that runs under the title bar. The sidebar is a plain
+/// view with a width rather than a split view item, whose look AppKit changes
+/// between macOS versions, and it has no divider for the frost to show through.
 final class WindowContentViewController: NSViewController {
     static let widthRange: ClosedRange<CGFloat> = 200...400
     private static let widthKey = "SidebarWidth"
@@ -15,6 +15,7 @@ final class WindowContentViewController: NSViewController {
     private var sidebarWidth: NSLayoutConstraint!
     private var contentAfterSidebar: NSLayoutConstraint!
     private var contentAtEdge: NSLayoutConstraint!
+    private var topConstraints: [NSLayoutConstraint] = []
     private var widthAtDragStart: CGFloat = 0
     private var hasPendingWidth = false
     private let defaults: UserDefaults
@@ -48,7 +49,13 @@ final class WindowContentViewController: NSViewController {
     }
 
     override func loadView() {
-        let view = NSView()
+        let frost = NSVisualEffectView()
+        frost.material = .sidebar
+        frost.blendingMode = .behindWindow
+        let wash = WashView()
+        wash.translatesAutoresizingMaskIntoConstraints = false
+        frost.addSubview(wash)
+        let view: NSView = frost
         addChild(sidebar)
         addChild(content)
         for child in [sidebar.view, content.view, handle] {
@@ -60,13 +67,20 @@ final class WindowContentViewController: NSViewController {
         sidebarWidth = sidebar.view.widthAnchor.constraint(equalToConstant: Self.clampedWidth(savedWidth > 0 ? savedWidth : 240))
         contentAfterSidebar = content.view.leadingAnchor.constraint(equalTo: sidebar.view.trailingAnchor)
         contentAtEdge = content.view.leadingAnchor.constraint(equalTo: view.leadingAnchor)
-        NSLayoutConstraint.activate([
-            sidebar.view.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+        // Until the window's layout guide is known, the children start at the top.
+        topConstraints = [
             sidebar.view.topAnchor.constraint(equalTo: view.topAnchor),
+            content.view.topAnchor.constraint(equalTo: view.topAnchor),
+        ]
+        NSLayoutConstraint.activate(topConstraints + [
+            wash.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            wash.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            wash.topAnchor.constraint(equalTo: view.topAnchor),
+            wash.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            sidebar.view.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             sidebar.view.bottomAnchor.constraint(equalTo: view.bottomAnchor),
             sidebarWidth,
             content.view.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            content.view.topAnchor.constraint(equalTo: view.topAnchor),
             content.view.bottomAnchor.constraint(equalTo: view.bottomAnchor),
             handle.centerXAnchor.constraint(equalTo: sidebar.view.trailingAnchor),
             handle.widthAnchor.constraint(equalToConstant: 6),
@@ -94,6 +108,19 @@ final class WindowContentViewController: NSViewController {
         isSidebarHidden = defaults.bool(forKey: Self.hiddenKey)
     }
 
+    /// The frost runs under the title bar; the sidebar and the terminal start
+    /// below it, where the window says its content begins.
+    override func viewWillAppear() {
+        super.viewWillAppear()
+        guard let guide = view.window?.contentLayoutGuide as? NSLayoutGuide else { return }
+        NSLayoutConstraint.deactivate(topConstraints)
+        topConstraints = [
+            sidebar.view.topAnchor.constraint(equalTo: guide.topAnchor),
+            content.view.topAnchor.constraint(equalTo: guide.topAnchor),
+        ]
+        NSLayoutConstraint.activate(topConstraints)
+    }
+
     deinit {
         NotificationCenter.default.removeObserver(self)
     }
@@ -115,6 +142,22 @@ final class WindowContentViewController: NSViewController {
 
     func toggleSidebar() {
         isSidebarHidden.toggle()
+    }
+}
+
+/// The wash over the frost. It sets the colour again in each layer update,
+/// since a layer keeps the one it first drew with when the window turns
+/// light or dark.
+private final class WashView: NSView {
+    override var wantsUpdateLayer: Bool { true }
+
+    override func updateLayer() {
+        layer?.backgroundColor = Theme.windowWash.cgColor(in: effectiveAppearance)
+    }
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        needsDisplay = true
     }
 }
 

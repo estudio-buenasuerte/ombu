@@ -65,8 +65,14 @@ final class TerminalSurfaceView: NSView {
     }
 
     private(set) var title = "" {
-        didSet { if title != oldValue { delegate?.surfaceTitleDidChange(self) } }
+        didSet {
+            guard title != oldValue else { return }
+            process = TabProcess.detect(after: process, title: title)
+            delegate?.surfaceTitleDidChange(self)
+        }
     }
+    /// What the shell integration says is running, read from the titles it sets.
+    private(set) var process: TabProcess?
     var pwd: String? {
         didSet { if pwd != oldValue { delegate?.surfaceDirectoryDidChange(self) } }
     }

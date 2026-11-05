@@ -25,7 +25,6 @@ final class TerminalWindow: NSObject, NSWindowDelegate {
         super.init()
         controller.window?.delegate = self
         controller.sidebar.delegate = self
-        controller.terminalArea.delegate = self
         controller.onResetZoom = { [weak self] in self?.resetZoom() }
         controller.onNewWorkspace = { [weak self] in self?.newWorkspace() }
         store.onChange = { [weak self] in
@@ -427,12 +426,29 @@ final class TerminalWindow: NSObject, NSWindowDelegate {
     }
 }
 
-// MARK: - Sidebar and tab bar
+// MARK: - Sidebar
 
-extension TerminalWindow: SidebarViewControllerDelegate, TerminalAreaViewControllerDelegate {
+extension TerminalWindow: SidebarViewControllerDelegate {
     func sidebar(_ sidebar: SidebarViewController, didSelect workspace: Workspace) {
         store.select(workspace)
         controller.terminalArea.focusSelectedSurface()
+    }
+
+    func sidebar(_ sidebar: SidebarViewController, didSelect tab: TerminalTab, in workspace: Workspace) {
+        cancelCommandPalette()
+        workspace.select(tab)
+        store.select(workspace)
+        controller.terminalArea.focusSelectedSurface()
+    }
+
+    func sidebar(_ sidebar: SidebarViewController, wantsClose tab: TerminalTab, in workspace: Workspace) {
+        close(tab)
+    }
+
+    func sidebar(_ sidebar: SidebarViewController, wantsNewTabIn workspace: Workspace) {
+        cancelCommandPalette()
+        store.select(workspace)
+        addTab(to: workspace)
     }
 
     func sidebar(_ sidebar: SidebarViewController, didFinishRenaming workspace: Workspace, to name: String?) {
@@ -447,15 +463,5 @@ extension TerminalWindow: SidebarViewControllerDelegate, TerminalAreaViewControl
 
     func sidebar(_ sidebar: SidebarViewController, wantsClose workspace: Workspace) {
         close(workspace)
-    }
-
-    func terminalArea(_ area: TerminalAreaViewController, didSelect tab: TerminalTab, in workspace: Workspace) {
-        workspace.select(tab)
-        store.notifyChanged()
-        controller.terminalArea.focusSelectedSurface()
-    }
-
-    func terminalArea(_ area: TerminalAreaViewController, didClose tab: TerminalTab, in workspace: Workspace) {
-        close(tab)
     }
 }
