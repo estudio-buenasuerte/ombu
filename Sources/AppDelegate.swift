@@ -306,6 +306,45 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         window.newTab()
     }
 
+    /// ⌘T opens the command center with New Tab first, so a plain ⌘T ↩ is
+    /// still a new tab while the same keys reach every tab and command.
+    @objc func showCommandCenter() {
+        guard let window = currentWindow else { return openWorkspace(in: nil, newWindow: false) }
+        openCommandCenter(in: window)
+    }
+
+    private func openCommandCenter(in window: TerminalWindow) {
+        let process: @MainActor (TerminalTab) -> TabProcess? = { [unowned self] tab in
+            tab.process(runningAgent: tab.panes.surfaces.lazy.compactMap { agentSessions.runningAgent(in: $0.id) }.first)
+        }
+        window.showCommandCenter(process: process) { [weak self, weak window] entry in
+            guard let self, let window else { return }
+            switch entry.target {
+            case .newTab:
+                window.newTab()
+            case .tab(let id):
+                guard let (owner, surface) = surface(withID: id) else { return }
+                owner.reveal(surface)
+            case .command(let command):
+                perform(command, in: window)
+            }
+        }
+    }
+
+    private func perform(_ command: CommandCenter.Command, in window: TerminalWindow) {
+        switch command {
+        case .newWorkspace: newWorkspace()
+        case .splitRight: splitRight()
+        case .splitDown: splitDown()
+        case .closeTab: closeTab()
+        case .renameWorkspace: renameWorkspace()
+        case .toggleSidebar: window.controller.toggleWorkspaceSidebar(nil)
+        case .settings: showSettings()
+        case .reloadConfiguration: reloadConfig()
+        case .keyboardShortcuts: showKeyboardShortcuts(nil)
+        }
+    }
+
     @objc private func closePane() {
         if closesOtherKeyWindow() { return }
         currentWindow?.closeFocusedPane()
@@ -324,11 +363,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return true
     }
 
-    @objc private func splitRight() {
+    @objc func splitRight() {
         currentWindow?.splitFocused(.right)
     }
 
-    @objc private func splitDown() {
+    @objc func splitDown() {
         currentWindow?.splitFocused(.down)
     }
 
@@ -336,7 +375,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         keyWindow?.selectWorkspace(at: sender.tag)
     }
 
-    @objc private func renameWorkspace() {
+    @objc func renameWorkspace() {
         keyWindow?.renameSelectedWorkspace()
     }
 
@@ -463,11 +502,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         UserDefaults.standard.set(enabled, forKey: Preferences.secureKeyboardEntry)
     }
 
-    @objc private func showSettings() {
+    @objc func showSettings() {
         settingsWindow.show()
     }
 
-    @objc private func reloadConfig() {
+    @objc func reloadConfig() {
         runtime.reloadConfig()
     }
 
@@ -510,7 +549,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let newWindowItem = fileMenu.addItem(withTitle: "New Window", action: #selector(newWindow), keyEquivalent: "n")
         newWindowItem.keyEquivalentModifierMask = [.command, .shift]
         fileMenu.addItem(withTitle: "New Workspace", action: #selector(newWorkspace), keyEquivalent: "n")
-        fileMenu.addItem(withTitle: "New Tab", action: #selector(newTab), keyEquivalent: "t")
+        fileMenu.addItem(withTitle: "New Tab…", action: #selector(showCommandCenter), keyEquivalent: "t")
         fileMenu.addItem(.separator())
         fileMenu.addItem(withTitle: "Close", action: #selector(closePane), keyEquivalent: "w")
         let closeTabItem = fileMenu.addItem(withTitle: "Close Tab", action: #selector(closeTab), keyEquivalent: "w")
@@ -625,9 +664,10 @@ extension AppDelegate: GhosttyRuntimeDelegate {
         newWorkspace()
     }
 
+    /// Ghostty's new_tab binding (⌘T in its config) opens the command center.
     func runtime(_ runtime: GhosttyRuntime, wantsNewTabFrom surface: TerminalSurfaceView?) {
-        guard let surface, let window = window(containing: surface) else { return newTab() }
-        window.newTab(nextTo: surface)
+        guard let surface, let window = window(containing: surface) else { return showCommandCenter() }
+        openCommandCenter(in: window)
     }
 
     func runtime(_ runtime: GhosttyRuntime, wantsSplit direction: SplitDirection, from surface: TerminalSurfaceView) -> Bool {

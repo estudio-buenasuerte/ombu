@@ -24,6 +24,7 @@ enum KeyboardShortcuts {
             Shortcut(title: "Show or hide the sidebar", keys: ["⌘", "B"]),
         ]),
         Section(title: "Go to", shortcuts: [
+            Shortcut(title: "Command center: tabs, commands, processes", keys: ["⌘", "T"]),
             Shortcut(title: "Go to a tab or pane", keys: ["⌘", "P"]),
             Shortcut(title: "Go back to the previous place", keys: ["⌘", "P", "P"]),
             Shortcut(title: "Go to an agent", keys: ["⌘", "I"]),
@@ -32,7 +33,7 @@ enum KeyboardShortcuts {
             Shortcut(title: "Step down the list, going there on letting go of ⌘", keys: ["⌘", "↓"]),
         ]),
         Section(title: "Tabs and panes", shortcuts: [
-            Shortcut(title: "New tab", keys: ["⌘", "T"]),
+            Shortcut(title: "New tab", keys: ["⌘", "T", "↩"]),
             Shortcut(title: "Switch tab", keys: ["⌃", "1–9"]),
             Shortcut(title: "Split right", keys: ["⌘", "D"]),
             Shortcut(title: "Split down", keys: ["⇧", "⌘", "D"]),

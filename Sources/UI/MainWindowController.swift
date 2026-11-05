@@ -174,6 +174,29 @@ final class MainWindowController: NSWindowController {
         commandPalette = nil
     }
 
+    private(set) var commandCenter: CommandCenterView?
+
+    /// Covers the whole window, like the palette, so a click anywhere outside
+    /// the panel cancels it.
+    func showCommandCenter(_ center: CommandCenterView) {
+        closeCommandCenter()
+        commandCenter = center
+        center.translatesAutoresizingMaskIntoConstraints = false
+        content.view.addSubview(center)
+        NSLayoutConstraint.activate([
+            center.leadingAnchor.constraint(equalTo: content.view.leadingAnchor),
+            center.trailingAnchor.constraint(equalTo: content.view.trailingAnchor),
+            center.topAnchor.constraint(equalTo: content.view.topAnchor),
+            center.bottomAnchor.constraint(equalTo: content.view.bottomAnchor),
+        ])
+        center.focusField()
+    }
+
+    func closeCommandCenter() {
+        commandCenter?.removeFromSuperview()
+        commandCenter = nil
+    }
+
     @objc func toggleWorkspaceSidebar(_ sender: Any?) {
         content.toggleSidebar()
     }

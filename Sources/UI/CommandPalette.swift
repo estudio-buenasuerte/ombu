@@ -187,7 +187,7 @@ enum CommandPalette {
     /// its letters in order within one text, so "an" doesn't take its "a" from
     /// the location and its "n" from the title. A number has to be a whole
     /// word, so "2" finds "Tab 2" but not "any2any" or "Tab 12".
-    private static func score(_ words: [String], in texts: [String]) -> Int? {
+    static func score(_ words: [String], in texts: [String]) -> Int? {
         let texts = texts.map { $0.lowercased() }
         let textWords = texts.flatMap { $0.split { !$0.isLetter && !$0.isNumber } }
         var total = 0

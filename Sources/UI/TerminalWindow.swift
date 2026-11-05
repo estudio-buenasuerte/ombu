@@ -262,6 +262,26 @@ final class TerminalWindow: NSObject, NSWindowDelegate {
     /// change once it closes.
     private func cancelCommandPalette() {
         controller.commandPalette?.cancel()
+        controller.commandCenter?.cancel()
+    }
+
+    // MARK: Command center
+
+    /// ⌘T: the entries are made from this window's tabs; choosing one is
+    /// handed up, since commands act app-wide.
+    func showCommandCenter(process: @MainActor (TerminalTab) -> TabProcess?, choose: @escaping (CommandCenter.Entry) -> Void) {
+        if controller.commandCenter != nil { return }
+        cancelCommandPalette()
+        let center = CommandCenterView(entries: CommandCenter.entries(in: store, process: process))
+        center.onChoose = { [weak self] entry in
+            self?.controller.closeCommandCenter()
+            choose(entry)
+        }
+        center.onCancel = { [weak self] in
+            self?.controller.closeCommandCenter()
+            self?.controller.terminalArea.focusSelectedSurface()
+        }
+        controller.showCommandCenter(center)
     }
 
     private func makeSurface(id: UUID = UUID(), in directory: String?, workspace: UUID, startImmediately: Bool = true) -> TerminalSurfaceView {
