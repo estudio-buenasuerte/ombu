@@ -78,6 +78,7 @@ struct FolderActivityTests {
             persistToDisk: false
         )
         store.selection = front.id
+        store.handleAgentStartedResponding(tabID: back.id)
         store.handleAgentAttention(tabID: back.id, kind: .needsInput, isAppActive: true)
         #expect(store.activeSpace.pinnedFolders.first?.activity == .waiting)
         #expect(store.sessions.first { $0.id == back.id }?.attentionKind == .needsInput)
@@ -89,7 +90,8 @@ struct FolderActivityTests {
         store.selection = back.id
         let selected = try #require(store.selectedSession)
         #expect(selected.attentionKind == nil)
-        #expect(store.activeSpace.pinnedFolders.first?.activity == (agentStillOpen ? .working : nil))
+        #expect(selected.agentBusy == false)
+        #expect(store.activeSpace.pinnedFolders.first?.activity == nil)
     }
 
     private func makeGitDir(at url: URL) throws {
@@ -188,5 +190,111 @@ struct FolderActivityTests {
             store.updateWorkingDirectory(tab.id, to: root.appendingPathComponent("Sources").path)
             #expect(store.activeSpace.pinnedFolders.first?.title == "My project")
         }
+    }
+
+    @Test func busyHookContributesWorkingBeforeProcessDetection() {
+        var tab = session()
+        tab.agentBusy = true
+        #expect(TerminalFolder(title: "project", sessions: [tab]).activity == .working)
+        tab.status = .attention
+        tab.attentionKind = .needsInput
+        #expect(TerminalFolder(title: "project", sessions: [tab]).activity == .waiting)
+        tab.attentionKind = .finishedResponding
+        #expect(TerminalFolder(title: "project", sessions: [tab]).activity == .done)
+    }
+
+    @Test func idleHookSuppressesWorkingWhileAgentRemainsOpen() {
+        var tab = session(process: .claude)
+        tab.agentBusy = false
+        #expect(TerminalFolder(title: "project", sessions: [tab]).activity == nil)
+    }
+
+    @Test func absentBusyHookPreservesProcessFallback() {
+        var tab = session(process: .codex)
+        #expect(tab.agentBusy == nil)
+        #expect(TerminalFolder(title: "project", sessions: [tab]).activity == .working)
+        tab.isSleeping = true
+        #expect(TerminalFolder(title: "project", sessions: [tab]).activity == nil)
+        tab.isSleeping = false
+        tab.runningProcess = nil
+        #expect(TerminalFolder(title: "project", sessions: [tab]).activity == nil)
+    }
+
+    @Test(arguments: [false, true], [false, true])
+    func attentionEndsBusyState(needsInput: Bool, isAppActive: Bool) {
+        let tab = session(process: .claude)
+        let folder = TerminalFolder(title: "project", sessions: [tab])
+        let store = TerminalSessionStore(
+            spaces: [SidebarSpace(name: "Main", pinnedFolders: [folder])], persistToDisk: false
+        )
+        store.selection = tab.id
+        store.handleAgentStartedResponding(tabID: tab.id)
+        #expect(store.selectedSession?.agentBusy == true)
+        #expect(store.selectedSession?.status == .running)
+        #expect(store.selectedSession?.attentionKind == nil)
+        #expect(store.activeSpace.pinnedFolders.first?.activity == .working)
+
+        let title = store.handleAgentAttention(
+            tabID: tab.id, kind: needsInput ? .needsInput : .finishedResponding, isAppActive: isAppActive
+        )
+        #expect(store.selectedSession?.agentBusy == false)
+        #expect(title == (isAppActive ? nil : "tab"))
+        store.acknowledgeSelectedAttention()
+        #expect(store.activeSpace.pinnedFolders.first?.activity == nil)
+        store.handleAgentStartedResponding(tabID: tab.id)
+        #expect(store.activeSpace.pinnedFolders.first?.activity == .working)
+    }
+
+    @Test(arguments: [false, true])
+    func attentionWithoutPromptHookPreservesFallback(needsInput: Bool) {
+        let tab = session(process: .codex)
+        let folder = TerminalFolder(title: "project", sessions: [tab])
+        let store = TerminalSessionStore(
+            spaces: [SidebarSpace(name: "Main", pinnedFolders: [folder])], persistToDisk: false
+        )
+        store.selection = tab.id
+        _ = store.handleAgentAttention(
+            tabID: tab.id, kind: needsInput ? .needsInput : .finishedResponding, isAppActive: false
+        )
+        #expect(store.selectedSession?.agentBusy == nil)
+        store.acknowledgeSelectedAttention()
+        #expect(store.activeSpace.pinnedFolders.first?.activity == .working)
+    }
+
+    @Test(arguments: [false, true])
+    func sleepAndShellPromptResetBusyState(sleep: Bool) throws {
+        let tab = session(process: .claude)
+        let store = TerminalSessionStore(
+            spaces: [SidebarSpace(name: "Main", ephemeralSessions: [tab])], persistToDisk: false
+        )
+        store.handleAgentStartedResponding(tabID: tab.id)
+        if sleep {
+            store.putToSleep(sessionID: tab.id)
+            store.handleAgentStartedResponding(tabID: tab.id)
+        } else {
+            store.applyShellTitle(tab.id, title: "zsh")
+        }
+        let updated = try #require(store.sessions.first { $0.id == tab.id })
+        #expect(updated.agentBusy == nil)
+        #expect(updated.runningProcess == nil)
+    }
+
+    @Test func agentBusyIsNotPersistedAndOldStateDecodesWithoutIt() throws {
+        for busy: Bool? in [true, false, nil] {
+            var original = session(process: .claude)
+            original.agentBusy = busy
+            let data = try JSONEncoder().encode(original)
+            let object = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
+            #expect(object["agentBusy"] == nil)
+            let decoded = try JSONDecoder().decode(TerminalSession.self, from: data)
+            #expect(decoded.agentBusy == nil)
+        }
+    }
+
+    @Test func userPromptSubmitHookBecomesStartedResponding() {
+        let line = #"{"event":"hook","agent":"claude","payload":{"hook_event_name":"UserPromptSubmit"}}"#
+        let event = AgentAttentionWatcher.attentionEvent(fromLine: line)
+        #expect(event == .startedResponding(agent: "claude"))
+        #expect(event?.notificationBody == "")
     }
 }

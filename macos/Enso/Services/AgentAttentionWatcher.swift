@@ -11,6 +11,7 @@ import Foundation
 final class AgentAttentionWatcher {
     /// What a background agent wants, parsed from a map-file hook event.
     enum AttentionEvent: Equatable {
+        case startedResponding(agent: String)
         /// Claude's Notification hook: waiting on a permission prompt or
         /// idle waiting for input.
         case needsInput(agent: String, message: String?)
@@ -24,6 +25,8 @@ final class AgentAttentionWatcher {
         /// generic line naming the agent.
         var notificationBody: String {
             switch self {
+            case .startedResponding:
+                return ""
             case .needsInput(_, .some(let message)) where !message.isEmpty:
                 return message
             case .needsInput(let agent, _):
@@ -168,8 +171,8 @@ final class AgentAttentionWatcher {
     }
 
     /// Parses one map line into an attention event: hook events only, and of
-    /// those only Notification and Stop. Everything else — SessionStart and
-    /// SessionEnd (restore's concern), launch/user-session records, garbage —
+    /// those only UserPromptSubmit, Notification and Stop. Everything else —
+    /// SessionStart and SessionEnd (restore's concern), launch/user-session records, garbage —
     /// is nil, never fatal, mirroring AgentSessionStore's tolerant compaction.
     /// Both agents speak the same schema here: codex's hook payloads carry
     /// the Claude-style hook_event_name / "Stop" discriminator (verified
@@ -182,6 +185,8 @@ final class AgentAttentionWatcher {
         else { return nil }
         let agent = event["agent"] as? String ?? ""
         switch payload["hook_event_name"] as? String {
+        case "UserPromptSubmit":
+            return .startedResponding(agent: agent)
         case "Notification":
             return .needsInput(agent: agent, message: payload["message"] as? String)
         case "Stop":

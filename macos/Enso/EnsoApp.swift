@@ -191,9 +191,13 @@ struct EnsoApp: App {
             let watcher = AgentAttentionWatcher(
                 directory: AgentSessionStore.defaultDirectory
             ) { tabID, event in
-                let kind: TerminalSessionStore.AgentAttentionKind = switch event {
-                case .needsInput: .needsInput
-                case .finishedResponding: .finishedResponding
+                let kind: TerminalSessionStore.AgentAttentionKind
+                switch event {
+                case .startedResponding:
+                    store.handleAgentStartedResponding(tabID: tabID)
+                    return
+                case .needsInput: kind = .needsInput
+                case .finishedResponding: kind = .finishedResponding
                 }
                 guard let title = store.handleAgentAttention(
                     tabID: tabID, kind: kind, isAppActive: NSApp.isActive

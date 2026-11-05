@@ -280,6 +280,6 @@ fi
 # (claude finished responding) feed the app's live attention watcher.
 enso_relay_json="$(enso_json_escape "$enso_relay")"
 enso_hook_entry='[{"matcher":"","hooks":[{"type":"command","command":"\"'"$enso_relay_json"'\" claude","timeout":10}]}]'
-ENSO_HOOKS_JSON='{"hooks":{"SessionStart":'"$enso_hook_entry"',"SessionEnd":'"$enso_hook_entry"',"Notification":'"$enso_hook_entry"',"Stop":'"$enso_hook_entry"'}}'
+ENSO_HOOKS_JSON='{"hooks":{"SessionStart":'"$enso_hook_entry"',"SessionEnd":'"$enso_hook_entry"',"UserPromptSubmit":'"$enso_hook_entry"',"Notification":'"$enso_hook_entry"',"Stop":'"$enso_hook_entry"'}}'
 
 exec "$REAL" --session-id "$ENSO_SESSION_ID" --settings "$ENSO_HOOKS_JSON" "$@"

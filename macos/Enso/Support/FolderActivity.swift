@@ -17,7 +17,8 @@ extension TerminalFolder {
             if session.status == .attention {
                 if session.attentionKind == .needsInput { return .waiting }
                 if result == nil { result = .done }
-            } else if session.runningProcess != nil && !session.isSleeping {
+            } else if session.agentBusy == true
+                || (session.agentBusy == nil && session.runningProcess != nil && !session.isSleeping) {
                 result = .working
             }
         }

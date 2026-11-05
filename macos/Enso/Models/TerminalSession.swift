@@ -499,6 +499,8 @@ struct TerminalSession: Identifiable, Hashable, Codable {
     /// shell on relaunch, so it is not persisted.
     var runningProcess: TabProcess?
     var attentionKind: AttentionKind? = nil
+    /// Nil preserves foreground-process fallback until a prompt hook arrives this launch.
+    var agentBusy: Bool? = nil
 
     /// The cwd the way people read it: home-relative with a tilde.
     var displayWorkingDirectory: String {
@@ -555,6 +557,7 @@ struct TerminalSession: Identifiable, Hashable, Codable {
         sleepingFontSize = try container.decodeIfPresent(Float.self, forKey: .sleepingFontSize)
         runningProcess = nil
         attentionKind = nil
+        agentBusy = nil
     }
 }
 

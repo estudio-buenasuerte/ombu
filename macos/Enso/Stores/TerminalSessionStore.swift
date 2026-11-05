@@ -1110,6 +1110,7 @@ final class TerminalSessionStore: ObservableObject {
                 // before detection is cleared with the shell.
                 item.sleepingProcess = item.runningProcess
                 item.runningProcess = nil
+                item.agentBusy = nil
                 item.sleepingFontSize = fontSize
                 item.status = .idle
                 // A sleeping tab is deliberately parked; the expiry clock
@@ -1597,6 +1598,7 @@ final class TerminalSessionStore: ObservableObject {
         guard detected != session.runningProcess || displayLands else { return }
         update(sessionID) { item in
             item.runningProcess = detected
+            if detected == nil { item.agentBusy = nil }
             guard item.titleOrigin == .shell, item.title != display else { return }
             item.title = display
         }
@@ -1632,7 +1634,10 @@ final class TerminalSessionStore: ObservableObject {
             guard let session = self.sessions.first(where: { $0.id == sessionID }) else { return }
             let detected = TabProcess.detect(after: session.runningProcess, foreground: resolution)
             guard detected != session.runningProcess else { return }
-            self.update(sessionID) { $0.runningProcess = detected }
+            self.update(sessionID) {
+                $0.runningProcess = detected
+                if detected == nil { $0.agentBusy = nil }
+            }
         }
     }
 
@@ -1748,6 +1753,12 @@ final class TerminalSessionStore: ObservableObject {
     /// which must remain testable without a signed bundle.
     var onAttentionCleared: ((TerminalSession.ID) -> Void)?
 
+    func handleAgentStartedResponding(tabID: TerminalSession.ID) {
+        guard let session = sessions.first(where: { $0.id == tabID }),
+              !session.isSleeping else { return }
+        update(tabID) { $0.agentBusy = true }
+    }
+
     /// An agent in the tab asked for the user (Notification hook) or
     /// finished a response (Stop hook). Marks the tab's row with the
     /// attention dot and returns its title when the caller should also post
@@ -1771,6 +1782,9 @@ final class TerminalSessionStore: ObservableObject {
         // a "finished responding" banner whose click would wake the tab)
         // takes back the thing the user just did.
         guard !session.isSleeping else { return nil }
+        if session.agentBusy != nil {
+            update(tabID) { $0.agentBusy = false }
+        }
         if tabID == selection, isAppActive { return nil }
         let alreadyMarked = session.status == .attention
         update(tabID) { item in
