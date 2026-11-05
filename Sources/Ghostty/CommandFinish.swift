@@ -22,8 +22,13 @@ struct CommandFinish {
         /// Ghostty starts from the bell alone, and each comma-separated name
         /// turns an action on, or off with a `no-` prefix.
         init?(config: String) {
-            if let all = ConfigBool.parse(config) {
-                self = all ? [.bell, .notify] : []
+            // The spellings Ghostty accepts for a plain true or false.
+            if ["1", "t", "T", "true"].contains(config) {
+                self = [.bell, .notify]
+                return
+            }
+            if ["0", "f", "F", "false"].contains(config) {
+                self = []
                 return
             }
             self = .bell

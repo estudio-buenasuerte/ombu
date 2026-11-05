@@ -35,11 +35,24 @@ final class GhosttyRuntime {
     private var observers: [NSObjectProtocol] = []
     private var appearanceObserver: NSKeyValueObservation?
     private(set) var colorScheme = GHOSTTY_COLOR_SCHEME_LIGHT
+    /// The file the user edits, for showing where the config comes from.
     let configFile: URL
+    private let loadConfig: () throws -> GhosttyConfig
 
-    init(configFile: URL = ConfigFile.url) throws {
+    /// Reads Ghostty's own config files, the way Ghostty.app does.
+    convenience init() throws {
+        try self.init(configFile: ConfigFile.url) { try GhosttyConfig() }
+    }
+
+    /// Reads one file only, for tests.
+    convenience init(configFile: URL) throws {
+        try self.init(configFile: configFile) { try GhosttyConfig(file: configFile) }
+    }
+
+    private init(configFile: URL, loadConfig: @escaping () throws -> GhosttyConfig) throws {
         self.configFile = configFile
-        config = try GhosttyConfig(file: configFile)
+        self.loadConfig = loadConfig
+        config = try loadConfig()
 
         var runtimeConfig = ghostty_runtime_config_s(
             userdata: Unmanaged.passUnretained(self).toOpaque(),
@@ -121,7 +134,7 @@ final class GhosttyRuntime {
     /// it back as a config change, which is when the windows take it up.
     /// Updating the terminals again here would give each one the config twice.
     func reloadConfig() {
-        guard let newConfig = try? GhosttyConfig(file: configFile) else { return }
+        guard let newConfig = try? loadConfig() else { return }
         config = newConfig
         for surface in surfaces.allObjects {
             surface.configDidChange(newConfig)

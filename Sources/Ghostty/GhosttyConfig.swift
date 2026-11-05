@@ -5,16 +5,14 @@ enum GhosttyError: Error {
     case apiFailed
 }
 
-/// Owns one `ghostty_config_t`, loaded from Flow's config file.
+/// Owns one `ghostty_config_t`, loaded the way Ghostty.app loads its own: the
+/// user's config files in their standard places, then the files they include.
 final class GhosttyConfig {
     let cValue: ghostty_config_t
 
-    /// Without a file, the config holds Ghostty's defaults.
-    init(file: URL? = ConfigFile.url) throws {
+    init() throws {
         guard let config = ghostty_config_new() else { throw GhosttyError.apiFailed }
-        if let file, FileManager.default.fileExists(atPath: file.path) {
-            ghostty_config_load_file(config, file.path)
-        }
+        ghostty_config_load_default_files(config)
         ghostty_config_load_recursive_files(config)
         ghostty_config_finalize(config)
         cValue = config
@@ -22,6 +20,17 @@ final class GhosttyConfig {
         for message in diagnostics {
             logger.warning("config: \(message, privacy: .public)")
         }
+    }
+
+    /// One file only, for tests.
+    init(file: URL) throws {
+        guard let config = ghostty_config_new() else { throw GhosttyError.apiFailed }
+        if FileManager.default.fileExists(atPath: file.path) {
+            ghostty_config_load_file(config, file.path)
+        }
+        ghostty_config_load_recursive_files(config)
+        ghostty_config_finalize(config)
+        cValue = config
     }
 
     /// Takes a copy of a config libghostty owns, such as the one it sends when

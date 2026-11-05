@@ -1,9 +1,11 @@
 import AppKit
 import SwiftUI
 
+/// Where Ghostty's config lives and what libghostty made of it.
 struct AdvancedSettingsView: View {
-    let store: SettingsStore
+    let problems: () -> [String]
     let reload: () -> Void
+    @State private var current: [String] = []
 
     var body: some View {
         Form {
@@ -11,32 +13,34 @@ struct AdvancedSettingsView: View {
                 LabeledContent {
                     HStack {
                         Button("Show in Finder") {
-                            NSWorkspace.shared.activateFileViewerSelecting([store.file])
+                            NSWorkspace.shared.activateFileViewerSelecting([ConfigFile.url])
                         }
                         Button("Open in Editor") {
-                            store.saveNow()
                             ConfigFile.openInEditor()
                         }
                     }
                 } label: {
-                    Text("Config file")
-                    Text(store.file.path.abbreviatingHome)
+                    Text("Ghostty config")
+                    Text(ConfigFile.url.path.abbreviatingHome)
                         .textSelection(.enabled)
                         .truncationMode(.middle)
                 }
             } footer: {
-                Text("Settings in this window are saved to this file. All Ghostty options are supported. Lines added by hand and comments are preserved.")
+                Text("Fonts, themes, custom shaders, keybinds and every other Ghostty option come from this file. Ombú never writes to it.")
                     .settingsFooter()
             }
 
             Section("Problems") {
                 LabeledContent {
-                    Button("Reload Configuration", action: reload)
+                    Button("Reload Configuration") {
+                        reload()
+                        current = problems()
+                    }
                 } label: {
-                    Text(problems.isEmpty ? "No problems" : problems.count == 1 ? "1 problem" : "\(problems.count) problems")
+                    Text(current.isEmpty ? "No problems" : current.count == 1 ? "1 problem" : "\(current.count) problems")
                     Text("Reload after editing the file (⇧⌘,).")
                 }
-                ForEach(problems, id: \.self) { problem in
+                ForEach(current, id: \.self) { problem in
                     Label(problem, systemImage: "exclamationmark.triangle.fill")
                         .symbolRenderingMode(.multicolor)
                         .textSelection(.enabled)
@@ -44,9 +48,6 @@ struct AdvancedSettingsView: View {
             }
         }
         .formStyle(.grouped)
-    }
-
-    private var problems: [String] {
-        store.problems + store.overrides
+        .onAppear { current = problems() }
     }
 }
