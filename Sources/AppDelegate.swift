@@ -70,6 +70,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             guard let (window, surface) = self?.surface(withID: id),
                   let (workspace, tab) = window.store.workspace(containing: surface) else { return }
             window.controller.agentsDidChange(in: workspace, tab: tab)
+            window.controller.terminalArea.show(window.store.selected)
         }
         agentSessions.onUpdate = { [weak self] update in
             self?.notify(update)
@@ -225,12 +226,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func makeWindow(frame: CGRect?) -> TerminalWindow {
         let window = TerminalWindow(frame: frame) { [unowned self] in self.runtime.config }
         window.delegate = self
-        window.controller.sidebar.agentIndicator = { [unowned self] tab in
-            agentSessions.indicator(for: tab.panes.surfaces.map(\.id))
+        window.controller.sidebar.indicator = { [unowned self] surfaces in
+            agentSessions.indicator(for: surfaces)
         }
-        window.controller.sidebar.runningAgent = { [unowned self] tab in
-            tab.panes.surfaces.lazy.compactMap { agentSessions.runningAgent(in: $0.id) }.first
+        let process: @MainActor (TerminalTab) -> TabProcess? = { [unowned self] tab in
+            tab.process(runningAgent: tab.panes.surfaces.lazy.compactMap { agentSessions.runningAgent(in: $0.id) }.first)
         }
+        window.controller.sidebar.tabProcess = process
+        window.controller.terminalArea.tabProcess = process
         window.controller.agentIndicator = { [unowned self] terminal in
             agentSessions.indicator(for: [terminal])
         }

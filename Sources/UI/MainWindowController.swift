@@ -102,6 +102,7 @@ final class MainWindowController: NSWindowController {
         guard let window else { return }
         window.appearance = config.windowAppearance
         terminalArea.backgroundColor = config.backgroundColor
+        terminalArea.surfaceFill = config.backgroundColor.withAlphaComponent(config.backgroundOpacity)
         let dim = config.unfocusedSplitDimming
         terminalArea.paneTreeView.unfocusedFill = dim > 0.001 ? config.unfocusedSplitFill.withAlphaComponent(dim) : nil
         terminalArea.show(store.selected)
@@ -133,6 +134,7 @@ final class MainWindowController: NSWindowController {
     /// Every tab's row shows its title, whichever workspace it is in.
     func titleDidChange(of surface: TerminalSurfaceView) {
         sidebar.reloadRows()
+        terminalArea.show(store.selected)
         updateWindowTitle()
     }
 

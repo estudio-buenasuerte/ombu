@@ -18,6 +18,8 @@ struct Session: Codable, Equatable {
         var customName: String?
         var tabs: [Tab]
         var selectedTab: Int
+        /// Where a workspace without tabs was, so it keeps its name.
+        var directory: String? = nil
     }
 
     struct Tab: Codable, Equatable {
@@ -91,7 +93,8 @@ extension WorkspaceStoreModel {
                             layout: Session.Layout(node: tab.panes.root),
                             zoomedPane: tab.panes.zoomed.flatMap { zoomed in tab.panes.leaves.firstIndex { $0 === zoomed } })
                     },
-                    selectedTab: workspace.tabs.firstIndex { $0 === places.selectedTab(in: workspace) } ?? 0)
+                    selectedTab: workspace.tabs.firstIndex { $0 === places.selectedTab(in: workspace) } ?? 0,
+                    directory: workspace.tabs.isEmpty ? workspace.lastDirectory : nil)
             },
             selectedWorkspace: workspaces.firstIndex { $0 === places.selected } ?? 0,
             frame: frame)
@@ -99,12 +102,13 @@ extension WorkspaceStoreModel {
 
     /// Rebuilds one window's workspaces. `makeLeaf` recreates a terminal from
     /// its saved id and working directory, given the id of its workspace.
-    /// Workspaces whose tabs were all lost are skipped.
+    /// A workspace without tabs comes back empty, in its place.
     func restore(_ window: Session.Window, makeLeaf: (_ id: UUID, _ workingDirectory: String?, _ workspace: UUID) -> Leaf) {
         performBatch {
             var selectedWorkspace: WorkspaceModel<Leaf>?
             for (workspaceIndex, saved) in window.workspaces.enumerated() {
                 let workspace = addWorkspace(id: saved.id, customName: saved.customName)
+                workspace.lastDirectory = saved.directory
                 var selectedTab: TabModel<Leaf>?
                 for (tabIndex, tab) in saved.tabs.enumerated() {
                     let root = tab.layout.makeNode { makeLeaf($0, $1, workspace.id) }
@@ -118,9 +122,7 @@ extension WorkspaceStoreModel {
                     if tabIndex == saved.selectedTab { selectedTab = restored }
                 }
                 if let selectedTab { workspace.select(selectedTab) }
-                if workspace.tabs.isEmpty {
-                    remove(workspace)
-                } else if workspaceIndex == window.selectedWorkspace {
+                if workspaceIndex == window.selectedWorkspace {
                     selectedWorkspace = workspace
                 }
             }

@@ -108,15 +108,16 @@ final class WindowContentViewController: NSViewController {
         isSidebarHidden = defaults.bool(forKey: Self.hiddenKey)
     }
 
-    /// The frost runs under the title bar; the sidebar and the terminal start
-    /// below it, where the window says its content begins.
+    /// The frost runs under the title bar. The sidebar starts below the
+    /// traffic lights, where the window says its content begins; the terminal
+    /// card rises beside them to the window's own top edge.
     override func viewWillAppear() {
         super.viewWillAppear()
         guard let guide = view.window?.contentLayoutGuide as? NSLayoutGuide else { return }
         NSLayoutConstraint.deactivate(topConstraints)
         topConstraints = [
             sidebar.view.topAnchor.constraint(equalTo: guide.topAnchor),
-            content.view.topAnchor.constraint(equalTo: guide.topAnchor),
+            content.view.topAnchor.constraint(equalTo: view.topAnchor),
         ]
         NSLayoutConstraint.activate(topConstraints)
     }

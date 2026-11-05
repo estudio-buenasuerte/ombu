@@ -81,9 +81,18 @@ final class WorkspaceModel<Leaf: PaneLeaf> {
         self.resolveName = resolveName
     }
 
+    /// Where the last tab was, so a workspace emptied of tabs keeps its name
+    /// and opens its next tab in the same place.
+    var lastDirectory: String?
+
+    /// The focused pane's directory, or where the workspace was last.
+    var directory: String? {
+        selectedTab?.focusedLeaf.workingDirectory ?? lastDirectory
+    }
+
     var name: String {
         if let customName { return customName }
-        guard let directory = selectedTab?.focusedLeaf.workingDirectory else { return "~" }
+        guard let directory else { return "~" }
         if let name = derivedNames[directory] { return name }
         let name = resolveName(directory)
         derivedNames[directory] = name
@@ -111,6 +120,7 @@ final class WorkspaceModel<Leaf: PaneLeaf> {
 
     func remove(_ tab: TabModel<Leaf>) {
         guard let index = tabs.firstIndex(where: { $0 === tab }) else { return }
+        lastDirectory = tab.focusedLeaf.workingDirectory ?? lastDirectory
         tabs.remove(at: index)
         if selectedTab === tab {
             selectedTab = tabs.isEmpty ? nil : tabs[min(index, tabs.count - 1)]

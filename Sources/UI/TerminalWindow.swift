@@ -99,8 +99,12 @@ final class TerminalWindow: NSObject, NSWindowDelegate {
         addTab(to: workspace)
     }
 
+    /// With no pane to close, ⌘W closes an empty workspace instead.
     func closeFocusedPane() {
-        guard let surface = focusedSurface else { return }
+        guard let surface = focusedSurface else {
+            if let workspace = store.selected, workspace.tabs.isEmpty { close(workspace) }
+            return
+        }
         close(surface)
     }
 
@@ -117,12 +121,8 @@ final class TerminalWindow: NSObject, NSWindowDelegate {
         let closing = workspace.tabs(closing: mode, from: tab)
         guard !closing.isEmpty, confirmClose(closing.flatMap(\.panes.surfaces), what: closing.count == 1 ? "tab" : "tabs") else { return }
         closing.forEach(workspace.remove)
-        if workspace.tabs.isEmpty {
-            store.remove(workspace)
-        } else {
-            store.notifyChanged()
-        }
-        closeWindowIfEmpty()
+        store.notifyChanged()
+        controller.terminalArea.focusSelectedSurface()
     }
 
     func selectWorkspace(at index: Int) {
@@ -269,7 +269,7 @@ final class TerminalWindow: NSObject, NSWindowDelegate {
     }
 
     private func addTab(to workspace: Workspace) {
-        let surface = makeSurface(in: workspace.selectedTab?.focusedSurface.workingDirectory, workspace: workspace.id)
+        let surface = makeSurface(in: workspace.directory, workspace: workspace.id)
         workspace.add(TerminalTab(leaf: surface))
         store.notifyChanged()
         controller.terminalArea.focusSelectedSurface()
@@ -370,7 +370,8 @@ final class TerminalWindow: NSObject, NSWindowDelegate {
         return alert.runModal() == .alertFirstButtonReturn
     }
 
-    /// Closes one pane. The tab closes with its last pane.
+    /// Closes one pane. The tab closes with its last pane; a workspace keeps
+    /// its place without tabs, as a space to open the next one in.
     func close(_ surface: TerminalSurfaceView) {
         guard let (_, tab) = store.workspace(containing: surface) else { return }
         cancelCommandPalette()
@@ -393,12 +394,8 @@ final class TerminalWindow: NSObject, NSWindowDelegate {
         cancelCommandPalette()
         guard confirmClose(tab.panes.surfaces, what: "tab") else { return }
         workspace.remove(tab)
-        if workspace.tabs.isEmpty {
-            store.remove(workspace)
-        } else {
-            store.notifyChanged()
-        }
-        closeWindowIfEmpty()
+        store.notifyChanged()
+        controller.terminalArea.focusSelectedSurface()
     }
 
     private func closeWindowIfEmpty() {
@@ -448,6 +445,14 @@ extension TerminalWindow: SidebarViewControllerDelegate {
     func sidebar(_ sidebar: SidebarViewController, wantsNewTabIn workspace: Workspace) {
         cancelCommandPalette()
         store.select(workspace)
+        addTab(to: workspace)
+    }
+
+    /// The New Terminal row: a tab in the selected workspace, or a workspace
+    /// when there is none.
+    func sidebarWantsNewTerminal(_ sidebar: SidebarViewController) {
+        guard let workspace = store.selected else { return newWorkspace() }
+        cancelCommandPalette()
         addTab(to: workspace)
     }
 
