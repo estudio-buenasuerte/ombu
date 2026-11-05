@@ -1,7 +1,7 @@
 import AppKit
 
-// Renders the Ombú app icon: a white ó cut into raster lines with a soft
-// glow on a near-black squircle. Writes 1024 masters plus a contact sheet;
+// Renders the Ombú app icon: ABC Diatype Mono's ó cut into eight horizontal
+// bars, after IBM's 1972 mark, white on a near-black squircle. Writes 1024 masters plus a contact sheet;
 // slice the chosen master with sips into both appiconsets.
 // Usage: swiftc scripts/make-icon.swift -o /tmp/make-icon && /tmp/make-icon <out-dir> [shape-mask.png]
 
@@ -244,12 +244,78 @@ func scanlined(_ rep: NSBitmapImageRep, period: CGFloat, strength: CGFloat) -> N
     return rep
 }
 
-sheet.append(rasterTile(period: 20, duty: 0.4, glow: 22))
-sheet.append(rasterTile(period: 20, duty: 0.4, glow: 22, curvature: 0.09))
-sheet.append(rasterTile(period: 20, duty: 0.4, glow: 22, curvature: 0.14))
+// IBM 1972: the glyph itself, cut into evenly spaced horizontal bars, no glow.
+// `rounded` draws each bar as capsules so its left and right ends are half-circles.
+func ibmTile(bars: Int, duty: CGFloat, size: CGFloat, rounded: Bool = false, glow: CGFloat = 0, family: String = "ABC Diatype Mono") -> NSBitmapImageRep {
+    let f = font(family, bold: true, size: size)
+    let a = NSAttributedString(string: "\u{F3}", attributes: [.font: f, .foregroundColor: NSColor.white])
+    let line = CTLineCreateWithAttributedString(a)
+    let oLine = CTLineCreateWithAttributedString(NSAttributedString(string: "o", attributes: [.font: f]))
+    let probe = bitmap()
+    NSGraphicsContext.saveGraphicsState()
+    NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: probe)
+    let pctx = NSGraphicsContext.current!.cgContext
+    let b = CTLineGetImageBounds(line, pctx)
+    let ob = CTLineGetImageBounds(oLine, pctx)
+    NSGraphicsContext.restoreGraphicsState()
+    // Bars are set over the height of the o; the accent keeps the same pitch.
+    let pitch = ob.height / CGFloat(bars)
+    let gy = (side - b.height) / 2 - b.minY
+    let gx = (side - b.width) / 2 - b.minX
+    let barH = pitch * duty
+    let firstY = gy + ob.minY - pitch * 20
+
+    let layer = bitmap()
+    NSGraphicsContext.saveGraphicsState()
+    NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: layer)
+    let lctx = NSGraphicsContext.current!.cgContext
+    if rounded {
+        let m = mask { let c = NSGraphicsContext.current!.cgContext; c.textPosition = CGPoint(x: gx, y: gy); CTLineDraw(line, c) }
+        NSColor.white.setFill()
+        var y = firstY
+        while y < side {
+            if y + barH > 0 {
+                // Coverage along the bar, averaged over three of its rows.
+                let rows = [y + barH * 0.25, y + barH * 0.5, y + barH * 0.75]
+                var runStart: Int? = nil
+                for x in 0...Int(side) {
+                    var v: CGFloat = 0
+                    for r in rows { if r >= 0, r < side, let c = m.colorAt(x: min(x, Int(side) - 1), y: Int(side - 1 - r)) { v += c.redComponent } }
+                    let on = x < Int(side) && v / 3 > 0.5
+                    if on, runStart == nil { runStart = x }
+                    if !on, let s = runStart {
+                        NSBezierPath(roundedRect: NSRect(x: CGFloat(s), y: y, width: CGFloat(x - s), height: barH), xRadius: barH / 2, yRadius: barH / 2).fill()
+                        runStart = nil
+                    }
+                }
+            }
+            y += pitch
+        }
+    } else {
+        lctx.textPosition = CGPoint(x: gx, y: gy)
+        CTLineDraw(line, lctx)
+        var y = firstY
+        while y < side + pitch { lctx.clear(CGRect(x: 0, y: y + barH, width: side, height: pitch - barH)); y += pitch }
+    }
+    NSGraphicsContext.restoreGraphicsState()
+    let img = NSImage(size: NSSize(width: side, height: side)); img.addRepresentation(layer)
+    return tile { ctx in
+        if glow > 0 {
+            ctx.saveGState()
+            ctx.setShadow(offset: .zero, blur: glow, color: NSColor(calibratedWhite: 1, alpha: 0.6).cgColor)
+            img.draw(in: NSRect(x: 0, y: 0, width: side, height: side), from: .zero, operation: .sourceOver, fraction: 1)
+            ctx.restoreGState()
+        } else {
+            img.draw(in: NSRect(x: 0, y: 0, width: side, height: side), from: .zero, operation: .sourceOver, fraction: 1)
+        }
+    }
+}
+sheet.append(ibmTile(bars: 8, duty: 0.62, size: 820))
+sheet.append(ibmTile(bars: 8, duty: 0.62, size: 820, rounded: true))
+sheet.append(ibmTile(bars: 8, duty: 0.62, size: 820, rounded: true, glow: 16))
 
 // Write masters and a contact sheet at Dock-ish size (256 + 64).
-let names = ["r20", "r20-curve-09", "r20-curve-14"]
+let names = ["ibm", "ibm-rounded", "ibm-rounded-glow"]
 for (i, rep) in sheet.enumerated() {
     try! rep.representation(using: .png, properties: [:])!.write(to: URL(fileURLWithPath: "\(outDir)/ombu-\(names[i])-1024.png"))
 }
