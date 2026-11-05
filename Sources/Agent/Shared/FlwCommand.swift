@@ -17,13 +17,13 @@ enum FlwCommand: Equatable {
     }
 
     static let usageText = """
-        usage: flw event <kind> [--agent NAME] [--session ID] [--detail TEXT]
+        usage: ombu-helper event <kind> [--agent NAME] [--session ID] [--detail TEXT]
                                 [--cwd PATH] [--surface UUID] [--workspace UUID]
-               flw hook <agent>              (reads the agent's hook JSON on stdin)
-               flw launch <agent> [args...]
-               flw shims <dir>
-               flw agents refresh
-               flw ping
+               ombu-helper hook <agent>              (reads the agent's hook JSON on stdin)
+               ombu-helper launch <agent> [args...]
+               ombu-helper shims <dir>
+               ombu-helper agents refresh
+               ombu-helper ping
 
         kinds: sessionStarted turnStarted working needsInput turnEnded sessionEnded attention
         """
@@ -51,13 +51,13 @@ enum FlwCommand: Equatable {
     /// What the shell integration runs at the first prompt, for the user to
     /// run again after installing an agent, written for their shell.
     static func refreshScript(environment: [String: String]) -> String {
-        let posix = #""$FLOW_FLW" shims "$dir" && PATH="$dir:$PATH""#
+        let posix = #""$OMBU_HELPER" shims "$dir" && PATH="$dir:$PATH""#
         guard environment["SHELL"].map({ ($0 as NSString).lastPathComponent }) == "fish" else {
-            return #"dir="$FLOW_SHIMS/$FLOW_SURFACE_ID""# + "\n" + posix
+            return #"dir="$OMBU_SHIMS/$OMBU_SURFACE_ID""# + "\n" + posix
         }
         return """
-            set dir $FLOW_SHIMS/$FLOW_SURFACE_ID
-            "$FLOW_FLW" shims $dir; and set -gx --prepend PATH $dir
+            set dir $OMBU_SHIMS/$OMBU_SURFACE_ID
+            "$OMBU_HELPER" shims $dir; and set -gx --prepend PATH $dir
             """
     }
 

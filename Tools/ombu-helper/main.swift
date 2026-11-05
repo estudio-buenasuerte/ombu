@@ -8,11 +8,11 @@ let environment = ProcessInfo.processInfo.environment
 let now = Date()
 
 func debug(_ message: String) {
-    guard environment["FLOW_DEBUG"] != nil else { return }
-    FileHandle.standardError.write(Data("flw: \(message)\n".utf8))
+    guard environment["OMBU_DEBUG"] != nil else { return }
+    FileHandle.standardError.write(Data("ombu-helper: \(message)\n".utf8))
 }
 
-/// Outside Flow there is no FLOW_SOCKET, so `flw` talks to the Flow started last.
+/// Outside Flow there is no OMBU_SOCKET, so `flw` talks to the Flow started last.
 func resolve(_ socket: String?) -> String? {
     socket ?? AgentEnvironment.newestRunningSocket()?.path
 }
@@ -58,7 +58,7 @@ do {
         FileHandle.standardError.write(Data((FlwCommand.usageText + "\n").utf8))
     case let .ping(socket):
         guard let socket = resolve(socket) else {
-            FileHandle.standardError.write(Data("flw: no Flow is running\n".utf8))
+            FileHandle.standardError.write(Data("ombu-helper: no Flow is running\n".utf8))
             exit(1)
         }
         print(socket)
@@ -83,7 +83,7 @@ do {
         }
     case let .launch(name, arguments):
         guard let adapter = AgentAdapter.named(name) else {
-            FileHandle.standardError.write(Data("flw: no agent named \(name)\n".utf8))
+            FileHandle.standardError.write(Data("ombu-helper: no agent named \(name)\n".utf8))
             exit(127)
         }
         guard let launcher = AgentLauncher(adapter, arguments: arguments, environment: environment, flw: flw) else {

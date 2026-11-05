@@ -1,6 +1,5 @@
 import AppKit
 import GhosttyKit
-import Sparkle
 
 /// Wires libghostty, the windows, and the app-wide pieces (menus,
 /// notifications, secure input, saving) together. Each window manages its own
@@ -20,24 +19,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var keyMonitor: Any?
     private lazy var aboutWindow = AboutWindowController()
     private lazy var keyboardShortcutsWindow = KeyboardShortcutsWindowController()
-    /// Made when Settings first opens, so the config is not read for it before.
-    private var loadedSettings: SettingsStore?
-    private var settings: SettingsStore {
-        if let loadedSettings { return loadedSettings }
-        let settings = SettingsStore()
-        settings.onSave = { [weak self] in self?.reloadConfig() }
-        loadedSettings = settings
-        return settings
-    }
-    private lazy var settingsWindow = SettingsWindowController(store: settings, updater: updater.updater) { [weak self] in
-        guard let self, !settings.saveNow() else { return }
-        reloadConfig()
-    }
+    private lazy var settingsWindow = SettingsWindowController(
+        problems: { [weak self] in self?.runtime.config.diagnostics ?? [] },
+        reload: { [weak self] in self?.reloadConfig() })
     private let notifications = DesktopNotifications()
     private let agentSounds = AgentSounds()
-    /// Sparkle asks on the second launch whether to check for updates
-    /// automatically; nothing is checked before the user agrees.
-    private let updater = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
     private var agentSessions: AgentSessionStore!
     private let agentSocket = AgentEnvironment.socketURL()
     private var agentListener: AgentSocketListener?
@@ -47,12 +33,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         Preferences.register()
-        ConfigFile.createIfMissing()
         do {
             runtime = try GhosttyRuntime()
         } catch {
             let alert = NSAlert()
-            alert.messageText = "Flow could not start libghostty"
+            alert.messageText = "Ombú could not start libghostty"
             alert.informativeText = "\(error)"
             alert.runModal()
             NSApp.terminate(nil)
@@ -64,7 +49,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             for window in self.windows {
                 window.controller.applyAppearance(config: self.runtime.config, app: self.runtime.app)
             }
-            self.loadedSettings?.reload(problems: self.runtime.config.diagnostics)
         }
         notifications.isInView = { [weak self] id in
             guard let self, let (window, surface) = self.surface(withID: id) else { return false }
@@ -163,7 +147,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     ]
 
     func applicationWillTerminate(_ notification: Notification) {
-        loadedSettings?.saveNow()
         pendingSave?.cancel()
         sessionWriter.flush(session())
         agentSounds.silence()
@@ -174,7 +157,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Without a runtime, libghostty never started and nothing is running.
         guard runtime?.needsConfirmQuit == true else { return .terminateNow }
         let alert = NSAlert()
-        alert.messageText = "Quit Flow?"
+        alert.messageText = "Quit Ombú?"
         alert.informativeText = "Quitting ends whatever is running in the terminals."
         alert.addButton(withTitle: "Quit")
         alert.addButton(withTitle: "Cancel")
@@ -242,11 +225,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func makeWindow(frame: CGRect?) -> TerminalWindow {
         let window = TerminalWindow(frame: frame) { [unowned self] in self.runtime.config }
         window.delegate = self
-        window.controller.sidebar.agentIndicator = { [unowned self] workspace in
-            agentSessions.indicator(for: workspace.surfaces.map(\.id))
-        }
-        window.controller.terminalArea.agentIndicator = { [unowned self] tab in
+        window.controller.sidebar.agentIndicator = { [unowned self] tab in
             agentSessions.indicator(for: tab.panes.surfaces.map(\.id))
+        }
+        window.controller.sidebar.runningAgent = { [unowned self] tab in
+            tab.panes.surfaces.lazy.compactMap { agentSessions.runningAgent(in: $0.id) }.first
         }
         window.controller.agentIndicator = { [unowned self] terminal in
             agentSessions.indicator(for: [terminal])
@@ -443,7 +426,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard update.alerts else { return }
         guard let (window, surface) = surface(withID: update.surface) else { return }
         let workspace = window.store.workspace(containing: surface)?.0.name
-        let title = [workspace, surface.title, surface.workingDirectory?.abbreviatingHome].compactMap { $0 }.first { !$0.isEmpty } ?? "Flow"
+        let title = [workspace, surface.title, surface.workingDirectory?.abbreviatingHome].compactMap { $0 }.first { !$0.isEmpty } ?? "Ombú"
         let alert = AgentAlert.make(for: update, title: title, isVisible: window.isInView(surface), defaults: .standard)
         if let sound = alert.sound {
             agentSounds.play(sound.kind, named: sound.name)
@@ -466,7 +449,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: App
 
-    private static let flwPath = Bundle.main.bundleURL.appendingPathComponent("Contents/Helpers/flw").path
+    private static let flwPath = Bundle.main.bundleURL.appendingPathComponent("Contents/Helpers/ombu-helper").path
 
     @objc private func toggleSecureKeyboardEntry() {
         setSecureKeyboardEntry(!SecureInput.shared.global)
@@ -478,7 +461,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func showSettings() {
-        settings.reload(problems: runtime.config.diagnostics)
         settingsWindow.show()
     }
 
@@ -501,8 +483,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let mainMenu = NSMenu()
 
         let appMenu = NSMenu()
-        appMenu.addItem(withTitle: "About Flow", action: #selector(showAbout), keyEquivalent: "")
-        appMenu.addItem(withTitle: "Check for Updates…", action: #selector(SPUStandardUpdaterController.checkForUpdates(_:)), keyEquivalent: "").target = updater
+        appMenu.addItem(withTitle: "About Ombú", action: #selector(showAbout), keyEquivalent: "")
         appMenu.addItem(.separator())
         appMenu.addItem(withTitle: "Settings…", action: #selector(showSettings), keyEquivalent: ",")
         let reloadItem = appMenu.addItem(withTitle: "Reload Configuration", action: #selector(reloadConfig), keyEquivalent: ",")
@@ -514,13 +495,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         appMenu.addItem(submenu: servicesMenu, title: "Services")
         NSApp.servicesMenu = servicesMenu
         appMenu.addItem(.separator())
-        appMenu.addItem(withTitle: "Hide Flow", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
+        appMenu.addItem(withTitle: "Hide Ombú", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
         let hideOthers = appMenu.addItem(withTitle: "Hide Others", action: #selector(NSApplication.hideOtherApplications(_:)), keyEquivalent: "h")
         hideOthers.keyEquivalentModifierMask = [.command, .option]
         appMenu.addItem(withTitle: "Show All", action: #selector(NSApplication.unhideAllApplications(_:)), keyEquivalent: "")
         appMenu.addItem(.separator())
-        appMenu.addItem(withTitle: "Quit Flow", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
-        mainMenu.addItem(submenu: appMenu, title: "Flow")
+        appMenu.addItem(withTitle: "Quit Ombú", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        mainMenu.addItem(submenu: appMenu, title: "Ombú")
 
         let fileMenu = NSMenu(title: "File")
         let newWindowItem = fileMenu.addItem(withTitle: "New Window", action: #selector(newWindow), keyEquivalent: "n")
@@ -676,8 +657,9 @@ extension AppDelegate: GhosttyRuntimeDelegate {
         window(containing: surface).map { showPalette(.places, in: $0) }
     }
 
+    /// Ghostty's open_config binding opens Ghostty's own file, as it does in Ghostty.app.
     func runtimeWantsOpenConfig(_ runtime: GhosttyRuntime) {
-        showSettings()
+        ConfigFile.openInEditor()
     }
 
     func runtime(_ runtime: GhosttyRuntime, wantsNotification title: String, body: String, from surface: TerminalSurfaceView) {

@@ -1,6 +1,6 @@
 import XCTest
 
-/// Runs the built `flw` the way an agent runs its hooks.
+/// Runs the built `ombu-helper` the way an agent runs its hooks.
 final class FlwTests: XCTestCase {
     var directory: URL!
 
@@ -21,7 +21,7 @@ final class FlwTests: XCTestCase {
     }
 
     func hook(socket: URL) throws -> Run {
-        let flw = Bundle(for: Self.self).bundleURL.deletingLastPathComponent().appendingPathComponent("flw")
+        let flw = Bundle(for: Self.self).bundleURL.deletingLastPathComponent().appendingPathComponent("ombu-helper")
         let process = Process()
         process.executableURL = flw
         process.arguments = ["hook", "claude"]

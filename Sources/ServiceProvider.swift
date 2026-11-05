@@ -1,6 +1,6 @@
 import AppKit
 
-/// Finder's "New Flow Workspace Here" and "New Flow Window Here" services.
+/// Finder's "New Ombú Workspace Here" and "New Ombú Window Here" services.
 /// A selected file opens its folder.
 final class ServiceProvider: NSObject {
     private let open: (_ directory: String, _ newWindow: Bool) -> Void

@@ -19,5 +19,5 @@ commit=$(git rev-parse --short=10 HEAD)
 plist="$TARGET_BUILD_DIR/$INFOPLIST_PATH"
 /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $version" "$plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $build" "$plist"
-/usr/libexec/PlistBuddy -c "Delete :FlowCommit" "$plist" 2>/dev/null || true
-/usr/libexec/PlistBuddy -c "Add :FlowCommit string $commit" "$plist"
+/usr/libexec/PlistBuddy -c "Delete :OmbuCommit" "$plist" 2>/dev/null || true
+/usr/libexec/PlistBuddy -c "Add :OmbuCommit string $commit" "$plist"

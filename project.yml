@@ -1,30 +1,26 @@
-name: flow
+name: ombu
 options:
-  bundleIdPrefix: dev.thetinygoat
+  bundleIdPrefix: com.buenasuerte
   deploymentTarget:
     macOS: "14.0"
   createIntermediateGroups: true
 settings:
   base:
     SWIFT_VERSION: "5.0"
-    CODE_SIGN_IDENTITY: "-"
+    # A personal build: signed with the development certificate so the
+    # hardened runtime accepts the helper, never notarized.
+    CODE_SIGN_IDENTITY: Apple Development
     CODE_SIGN_STYLE: Manual
-    DEVELOPMENT_TEAM: ""
+    DEVELOPMENT_TEAM: 8WA5YWTZ2F
     OTHER_LDFLAGS: -lstdc++
     DEAD_CODE_STRIPPING: YES
-packages:
-  Sparkle:
-    url: https://github.com/sparkle-project/Sparkle
-    exactVersion: 2.10.0
+    ARCHS: arm64
 targets:
-  flow:
+  ombu:
     type: application
     platform: macOS
     sources:
       - path: Sources
-      - path: Resources/AppIcon.icon
-        type: file
-        buildPhase: resources
       - path: Resources/Assets.xcassets
       - path: LICENSE
         buildPhase: resources
@@ -39,7 +35,7 @@ targets:
       - path: Resources/agents
         type: folder
     dependencies:
-      - target: flw
+      - target: ombu-helper
         embed: true
         codeSign: true
         copy:
@@ -48,35 +44,32 @@ targets:
       - framework: Vendor/GhosttyKit.xcframework
         embed: false
       - sdk: Carbon.framework
-      - package: Sparkle
     info:
       path: Resources/Info.plist
       properties:
-        CFBundleName: $(FLOW_DISPLAY_NAME)
-        CFBundleDisplayName: $(FLOW_DISPLAY_NAME)
+        CFBundleName: $(OMBU_DISPLAY_NAME)
+        CFBundleDisplayName: $(OMBU_DISPLAY_NAME)
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSMinimumSystemVersion: "14.0"
         NSHighResolutionCapable: true
         NSPrincipalClass: NSApplication
         LSApplicationCategoryType: public.app-category.developer-tools
-        SUFeedURL: https://github.com/thetinygoat/flow/releases/latest/download/appcast.xml
-        SUPublicEDKey: gnIDTAWHUnqS4UrhHqvKEcvSXQvgKEp1MBuzvlSeFsM=
-        # Programs run inside Flow are attributed to Flow by macOS, so their
+        # Programs run inside Ombú are attributed to Ombú by macOS, so their
         # permission prompts show these.
-        NSAppleEventsUsageDescription: A program running in Flow would like to use AppleScript.
-        NSBluetoothAlwaysUsageDescription: A program running in Flow would like to use Bluetooth.
-        NSCalendarsUsageDescription: A program running in Flow would like to access your calendars.
-        NSCameraUsageDescription: A program running in Flow would like to use the camera.
-        NSContactsUsageDescription: A program running in Flow would like to access your contacts.
-        NSLocalNetworkUsageDescription: A program running in Flow would like to access the local network.
-        NSLocationUsageDescription: A program running in Flow would like to access your location.
-        NSMicrophoneUsageDescription: A program running in Flow would like to use the microphone.
-        NSMotionUsageDescription: A program running in Flow would like to access motion data.
-        NSPhotoLibraryUsageDescription: A program running in Flow would like to access your photos.
-        NSRemindersUsageDescription: A program running in Flow would like to access your reminders.
-        NSSpeechRecognitionUsageDescription: A program running in Flow would like to use speech recognition.
-        NSSystemAdministrationUsageDescription: A program running in Flow requires administrator privileges.
+        NSAppleEventsUsageDescription: A program running in Ombú would like to use AppleScript.
+        NSBluetoothAlwaysUsageDescription: A program running in Ombú would like to use Bluetooth.
+        NSCalendarsUsageDescription: A program running in Ombú would like to access your calendars.
+        NSCameraUsageDescription: A program running in Ombú would like to use the camera.
+        NSContactsUsageDescription: A program running in Ombú would like to access your contacts.
+        NSLocalNetworkUsageDescription: A program running in Ombú would like to access the local network.
+        NSLocationUsageDescription: A program running in Ombú would like to access your location.
+        NSMicrophoneUsageDescription: A program running in Ombú would like to use the microphone.
+        NSMotionUsageDescription: A program running in Ombú would like to access motion data.
+        NSPhotoLibraryUsageDescription: A program running in Ombú would like to access your photos.
+        NSRemindersUsageDescription: A program running in Ombú would like to access your reminders.
+        NSSpeechRecognitionUsageDescription: A program running in Ombú would like to use speech recognition.
+        NSSystemAdministrationUsageDescription: A program running in Ombú requires administrator privileges.
         CFBundleDocumentTypes:
           - CFBundleTypeName: Folders
             CFBundleTypeRole: Editor
@@ -84,79 +77,60 @@ targets:
             LSItemContentTypes: [public.directory]
         NSServices:
           - NSMenuItem:
-              default: New Flow Workspace Here
+              default: New Ombú Workspace Here
             NSMessage: openWorkspace
             NSRequiredContext:
               NSTextContent: FilePath
             NSSendTypes: [NSFilenamesPboardType, public.plain-text]
           - NSMenuItem:
-              default: New Flow Window Here
+              default: New Ombú Window Here
             NSMessage: openWindow
             NSRequiredContext:
               NSTextContent: FilePath
             NSSendTypes: [NSFilenamesPboardType, public.plain-text]
     settings:
       base:
-        PRODUCT_NAME: Flow
+        PRODUCT_NAME: Ombu
         # Placeholders; the stamp-version script writes the real values from git.
         MARKETING_VERSION: 0.0.0
         CURRENT_PROJECT_VERSION: "0"
         ENABLE_USER_SCRIPT_SANDBOXING: NO
-        PRODUCT_BUNDLE_IDENTIFIER: dev.thetinygoat.flow
-        FLOW_DISPLAY_NAME: Flow
+        PRODUCT_BUNDLE_IDENTIFIER: com.buenasuerte.ombu
+        OMBU_DISPLAY_NAME: Ombú
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ENABLE_HARDENED_RUNTIME: YES
-        CODE_SIGN_ENTITLEMENTS: Resources/Flow.entitlements
+        CODE_SIGN_ENTITLEMENTS: Resources/Ombu.entitlements
       configs:
-        # The hardened runtime only loads libraries signed by the app's own
-        # team, so Debug is signed with the team too rather than ad-hoc.
         Debug:
-          CODE_SIGN_IDENTITY: Apple Development
-          DEVELOPMENT_TEAM: DP5STKBRSS
-          # A debug build running beside the installed Flow is a separate app to
-          # macOS, so neither steals the other's activation or Dock entry.
-          PRODUCT_BUNDLE_IDENTIFIER: dev.thetinygoat.flow.debug
-          FLOW_DISPLAY_NAME: Flow Debug
-        Release:
-          CODE_SIGN_IDENTITY: Developer ID Application
-          DEVELOPMENT_TEAM: DP5STKBRSS
-          OTHER_CODE_SIGN_FLAGS: --timestamp
-          # Notarization rejects the debugging entitlement Xcode adds by default.
-          CODE_SIGN_INJECT_BASE_ENTITLEMENTS: NO
+          # A debug build running beside an installed Ombú is a separate app
+          # to macOS, so neither steals the other's activation or Dock entry.
+          PRODUCT_BUNDLE_IDENTIFIER: com.buenasuerte.ombu.debug
+          OMBU_DISPLAY_NAME: Ombú Debug
     postBuildScripts:
       - name: Stamp version
         script: '"$SRCROOT/scripts/stamp-version.sh"'
         basedOnDependencyAnalysis: false
     scheme:
       testTargets:
-        - flowTests
-  flw:
+        - ombuTests
+  ombu-helper:
     type: tool
     platform: macOS
     deploymentTarget: "14.0"
     sources:
-      - path: Tools/flw
+      - path: Tools/ombu-helper
       - path: Sources/Agent/Shared
     settings:
       base:
-        PRODUCT_NAME: flw
-        PRODUCT_BUNDLE_IDENTIFIER: dev.thetinygoat.flow.flw
+        PRODUCT_NAME: ombu-helper
+        PRODUCT_BUNDLE_IDENTIFIER: com.buenasuerte.ombu.helper
         ENABLE_HARDENED_RUNTIME: YES
         SKIP_INSTALL: YES
-      configs:
-        Debug:
-          CODE_SIGN_IDENTITY: Apple Development
-          DEVELOPMENT_TEAM: DP5STKBRSS
-        Release:
-          CODE_SIGN_IDENTITY: Developer ID Application
-          DEVELOPMENT_TEAM: DP5STKBRSS
-          OTHER_CODE_SIGN_FLAGS: --timestamp
-          CODE_SIGN_INJECT_BASE_ENTITLEMENTS: NO
-  flowTests:
+  ombuTests:
     type: bundle.unit-test
     platform: macOS
     dependencies:
-      - target: flw
+      - target: ombu-helper
         embed: false
       - framework: Vendor/GhosttyKit.xcframework
         embed: false
@@ -171,13 +145,11 @@ targets:
       - path: Sources/Workspace/Workspace.swift
       - path: Sources/Workspace/Session.swift
       - path: Sources/Workspace/TerminalModel.swift
+      - path: Sources/Workspace/TabProcess.swift
       - path: Sources/Agent
       - path: Sources/Workspace/GitStatus.swift
-      - path: Sources/Ghostty
-      - path: Sources/Settings/ConfigSetting.swift
       - path: Sources/Settings/Preferences.swift
-      - path: Sources/Settings/SettingsStore.swift
-      - path: Sources/Settings/Themes.swift
+      - path: Sources/Ghostty
       - path: Sources/ServiceProvider.swift
       - path: Sources/UI/ClipboardConfirmation.swift
       - path: Sources/UI/UntrustedLinkAlert.swift
@@ -188,10 +160,10 @@ targets:
       - path: Sources/UI/WindowContentViewController.swift
       - path: Sources/UI/WorkspaceMenu.swift
       - path: Sources/UI/RowDrop.swift
-      - path: Sources/UI/TabBarView.swift
+      - path: Sources/UI/Theme.swift
       - path: Sources/UI/AgentDotView.swift
       - path: Sources/UI/KeyboardShortcuts.swift
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: dev.thetinygoat.flowTests
+        PRODUCT_BUNDLE_IDENTIFIER: com.buenasuerte.ombuTests
         GENERATE_INFOPLIST_FILE: YES

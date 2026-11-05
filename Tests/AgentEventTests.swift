@@ -58,9 +58,9 @@ final class FlwCommandTests: XCTestCase {
 
     func parse(_ arguments: [String], environment: [String: String]? = nil) throws -> FlwCommand {
         let environment = environment ?? [
-            "FLOW_SURFACE_ID": surface.uuidString,
-            "FLOW_WORKSPACE_ID": workspace.uuidString,
-            "FLOW_SOCKET": "/tmp/flow.sock",
+            "OMBU_SURFACE_ID": surface.uuidString,
+            "OMBU_WORKSPACE_ID": workspace.uuidString,
+            "OMBU_SOCKET": "/tmp/flow.sock",
         ]
         return try FlwCommand.parse(arguments, environment: environment, currentDirectory: "/work", now: now)
     }
@@ -82,7 +82,7 @@ final class FlwCommandTests: XCTestCase {
 
     func testOutsideFlowLeavesTheSocketToFindAndNoTerminal() throws {
         XCTAssertEqual(try parse(["ping"], environment: [:]), .ping(socket: nil))
-        XCTAssertEqual(try parse(["ping"], environment: ["FLOW_SOCKET": ""]), .ping(socket: nil))
+        XCTAssertEqual(try parse(["ping"], environment: ["OMBU_SOCKET": ""]), .ping(socket: nil))
         guard case let .event(event, _) = try parse(["event", "attention"], environment: [:]) else { return XCTFail() }
         XCTAssertNil(event.surfaceID)
         XCTAssertNil(event.workspaceID)
@@ -113,12 +113,12 @@ final class FlwCommandTests: XCTestCase {
             return XCTFail()
         }
         XCTAssertEqual(posix, #"""
-            dir="$FLOW_SHIMS/$FLOW_SURFACE_ID"
-            "$FLOW_FLW" shims "$dir" && PATH="$dir:$PATH"
+            dir="$OMBU_SHIMS/$OMBU_SURFACE_ID"
+            "$OMBU_HELPER" shims "$dir" && PATH="$dir:$PATH"
             """#)
         XCTAssertEqual(fish, #"""
-            set dir $FLOW_SHIMS/$FLOW_SURFACE_ID
-            "$FLOW_FLW" shims $dir; and set -gx --prepend PATH $dir
+            set dir $OMBU_SHIMS/$OMBU_SURFACE_ID
+            "$OMBU_HELPER" shims $dir; and set -gx --prepend PATH $dir
             """#)
     }
 

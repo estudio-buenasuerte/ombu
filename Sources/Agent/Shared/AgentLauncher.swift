@@ -53,7 +53,7 @@ struct AgentLauncher: Equatable {
         let argv = arguments.map { strdup($0) } + [nil]
         let envp = environment.map { strdup("\($0.key)=\($0.value)") } + [nil]
         execve(executable, argv, envp)
-        FileHandle.standardError.write(Data("flw: \(executable): \(String(cString: strerror(errno)))\n".utf8))
+        FileHandle.standardError.write(Data("ombu-helper: \(executable): \(String(cString: strerror(errno)))\n".utf8))
         exit(126)
     }
 }
@@ -64,7 +64,7 @@ enum AgentShims {
     /// Each running Flow keeps its terminals' shims apart, so two copies of
     /// the app never remove each other's.
     static func root(pid: pid_t = getpid(), temporaryDirectory: String = NSTemporaryDirectory()) -> String {
-        (temporaryDirectory as NSString).appendingPathComponent("flow-shims/\(pid)")
+        (temporaryDirectory as NSString).appendingPathComponent("ombu-shims/\(pid)")
     }
 
     static func script(for adapter: AgentAdapter, directory: String, flw: String) -> String {
@@ -98,7 +98,7 @@ enum AgentShims {
     /// terminals that no longer exist.
     static func removeStale(temporaryDirectory: String = NSTemporaryDirectory(), pid: pid_t = getpid(), isLive: (UUID) -> Bool) {
         let files = FileManager.default
-        let roots = (temporaryDirectory as NSString).appendingPathComponent("flow-shims")
+        let roots = (temporaryDirectory as NSString).appendingPathComponent("ombu-shims")
         for name in (try? files.contentsOfDirectory(atPath: roots)) ?? [] {
             guard let owner = pid_t(name), owner > 0, owner != pid else { continue }
             if !AgentEnvironment.isRunning(owner) {

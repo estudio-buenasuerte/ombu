@@ -5,5 +5,5 @@ import Foundation
 /// installed Flow's settings or windows.
 enum AppFolder {
     static let isDebugBuild = Bundle.main.bundleIdentifier?.hasSuffix(".debug") == true
-    static let name = isDebugBuild ? "flow-debug" : "flow"
+    static let name = isDebugBuild ? "ombu-debug" : "flow"
 }

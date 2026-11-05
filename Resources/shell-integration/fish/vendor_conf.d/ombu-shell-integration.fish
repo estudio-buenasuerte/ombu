@@ -13,10 +13,10 @@ end
 
 # The first prompt comes after the user's config has set PATH, so the shims
 # go in front of wherever the agents were installed.
-if status is-interactive; and set --query FLOW_SURFACE_ID FLOW_SHIMS; and not set --query FLOW_AGENTS_DISABLED
+if status is-interactive; and set --query OMBU_SURFACE_ID OMBU_SHIMS; and not set --query OMBU_AGENTS_DISABLED
     function __flow_agents_init --on-event fish_prompt
         functions --erase __flow_agents_init
-        set --local dir $FLOW_SHIMS/$FLOW_SURFACE_ID
-        "$FLOW_FLW" shims $dir; and set --global --export --prepend PATH $dir
+        set --local dir $OMBU_SHIMS/$OMBU_SURFACE_ID
+        "$OMBU_HELPER" shims $dir; and set --global --export --prepend PATH $dir
     end
 end

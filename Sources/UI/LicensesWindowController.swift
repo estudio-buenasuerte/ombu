@@ -41,7 +41,7 @@ final class LicensesWindowController: NSWindowController {
         let files = ["LICENSE", "THIRD_PARTY_LICENSES.md"].compactMap { name in
             Bundle.main.url(forResource: name, withExtension: nil).flatMap { try? String(contentsOf: $0, encoding: .utf8) }
         }
-        let markdown = "## Flow\n\n" + files.joined(separator: "\n\n")
+        let markdown = "## Ombú\n\n" + files.joined(separator: "\n\n")
         let result = NSMutableAttributedString()
         for line in markdown.components(separatedBy: "\n") where !line.hasPrefix("```") {
             if line.hasPrefix("#") {

@@ -83,7 +83,7 @@ extension NSPasteboard.PasteboardType {
 
 extension NSPasteboard {
     /// The pasteboard used for Ghostty's selection clipboard (middle-click paste style).
-    static let ghosttySelection = NSPasteboard(name: .init("dev.thetinygoat.flow.selection"))
+    static let ghosttySelection = NSPasteboard(name: .init("com.buenasuerte.ombu.selection"))
 
     static func ghostty(_ clipboard: ghostty_clipboard_e) -> NSPasteboard? {
         switch clipboard {

@@ -145,7 +145,7 @@ extension Session.Window {
 
 /// Slow storage must not stall input or accumulate obsolete session snapshots.
 final class SessionWriter {
-    private let queue = DispatchQueue(label: "dev.thetinygoat.flow.session", qos: .utility)
+    private let queue = DispatchQueue(label: "com.buenasuerte.ombu.session", qos: .utility)
     private let lock = NSLock()
     private var pending: Session?
     private var isWriting = false

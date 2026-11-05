@@ -9,7 +9,7 @@ import Carbon
 /// Adapted from Ghostty's SecureInput.swift.
 final class SecureInput {
     static let shared = SecureInput()
-    static let didChangeNotification = Notification.Name("FlowSecureInputDidChange")
+    static let didChangeNotification = Notification.Name("OmbuSecureInputDidChange")
 
     /// Set by the Secure Keyboard Entry menu item.
     var global = false {

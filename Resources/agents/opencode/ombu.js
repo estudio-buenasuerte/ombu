@@ -11,7 +11,7 @@ function summary(text) {
 }
 
 export const Flow = async () => {
-  const flw = process.env.FLOW_FLW
+  const flw = process.env.OMBU_HELPER
   if (!flw) return {}
 
   // Subagents run in child sessions, and would make their parent's state

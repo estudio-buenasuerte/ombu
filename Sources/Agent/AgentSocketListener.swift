@@ -10,7 +10,7 @@ final class AgentSocketListener {
 
     let url: URL
     private let deliver: @MainActor (AgentEvent) -> Void
-    private let queue = DispatchQueue(label: "dev.thetinygoat.flow.agent-socket")
+    private let queue = DispatchQueue(label: "com.buenasuerte.ombu.agent-socket")
     private var acceptSource: DispatchSourceRead?
     private var clients: [Int32: Client] = [:]
 

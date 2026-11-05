@@ -3,17 +3,17 @@ import Foundation
 /// Variables every shell Flow starts inherits, so that coding agents and the
 /// hooks they run can tell Flow which terminal they are in and reach it.
 enum AgentEnvironment {
-    static let surfaceKey = "FLOW_SURFACE_ID"
-    static let workspaceKey = "FLOW_WORKSPACE_ID"
-    static let socketKey = "FLOW_SOCKET"
+    static let surfaceKey = "OMBU_SURFACE_ID"
+    static let workspaceKey = "OMBU_WORKSPACE_ID"
+    static let socketKey = "OMBU_SOCKET"
     /// The `flw` inside the app, for the shell integration to call.
-    static let flwKey = "FLOW_FLW"
+    static let flwKey = "OMBU_HELPER"
     /// Where this Flow's shells keep their shims, one directory per terminal.
-    static let shimsKey = "FLOW_SHIMS"
+    static let shimsKey = "OMBU_SHIMS"
     /// Set by the user to start agents exactly as typed.
-    static let disabledKey = "FLOW_AGENTS_DISABLED"
+    static let disabledKey = "OMBU_AGENTS_DISABLED"
     /// Set by a shim, so `flw launch` can look for the real binary past it.
-    static let shimDirectoryKey = "FLOW_SHIM_DIR"
+    static let shimDirectoryKey = "OMBU_SHIM_DIR"
 
     static let socketDirectory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         .appendingPathComponent("flow", isDirectory: true)

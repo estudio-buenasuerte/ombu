@@ -129,7 +129,7 @@ final class GitStatusMonitor {
     /// Nil for a directory outside any repository.
     private var repositories: [String: GitRepository?] = [:]
     private var watched: [GitRepository: Watched] = [:]
-    private let queue = DispatchQueue(label: "dev.thetinygoat.flow.git", qos: .utility)
+    private let queue = DispatchQueue(label: "com.buenasuerte.ombu.git", qos: .utility)
     private(set) var finishedChecks = 0
 
     /// Watches the repositories behind `directories` and stops watching any
@@ -348,7 +348,7 @@ final class GitStatusMonitor {
 
 /// A recursive FSEvents stream delivering changed file paths on a background queue.
 private final class FileEvents {
-    private static let queue = DispatchQueue(label: "dev.thetinygoat.flow.file-events", qos: .utility)
+    private static let queue = DispatchQueue(label: "com.buenasuerte.ombu.file-events", qos: .utility)
     private var stream: FSEventStreamRef?
     private let handler: ([String]) -> Void
 

@@ -21,7 +21,7 @@ enum OpenCode {
         URL(fileURLWithPath: flw)
             .deletingLastPathComponent()
             .deletingLastPathComponent()
-            .appendingPathComponent("Resources/agents/opencode/flow.js")
+            .appendingPathComponent("Resources/agents/opencode/ombu.js")
             .path
     }
 

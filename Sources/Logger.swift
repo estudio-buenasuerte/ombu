@@ -1,3 +1,3 @@
 import os
 
-let logger = Logger(subsystem: "dev.thetinygoat.flow", category: "flow")
+let logger = Logger(subsystem: "com.buenasuerte.ombu", category: "flow")

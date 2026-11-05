@@ -51,7 +51,7 @@ final class ClaudeCodeTests: XCTestCase {
     func translate(_ json: String) throws -> AgentEvent? {
         let payload = try XCTUnwrap(HookPayload(
             json: Data(json.utf8), agent: "claude",
-            environment: ["FLOW_SURFACE_ID": surface.uuidString, "FLOW_WORKSPACE_ID": workspace.uuidString], now: now
+            environment: ["OMBU_SURFACE_ID": surface.uuidString, "OMBU_WORKSPACE_ID": workspace.uuidString], now: now
         ))
         return ClaudeCode.translate(payload)
     }
@@ -116,7 +116,7 @@ final class ClaudeCodeTests: XCTestCase {
 
     // MARK: Settings
 
-    let flw = "/Applications/Flow Beta.app/Contents/Helpers/flw"
+    let flw = "/Applications/Ombu.app/Contents/Helpers/ombu-helper"
 
     func settings(in arguments: [String]) throws -> [String: Any] {
         XCTAssertEqual(arguments.filter { $0 == "--settings" }.count, 1)
@@ -137,7 +137,7 @@ final class ClaudeCodeTests: XCTestCase {
         XCTAssertEqual(settings["preferredNotifChannel"] as? String, "notifications_disabled")
         XCTAssertEqual(Set((settings["hooks"] as? [String: Any] ?? [:]).keys), Set(ClaudeCode.hookEvents))
         for event in ClaudeCode.hookEvents {
-            XCTAssertEqual(commands(settings, event), ["'/Applications/Flow Beta.app/Contents/Helpers/flw' hook claude"])
+            XCTAssertEqual(commands(settings, event), ["'/Applications/Ombu.app/Contents/Helpers/ombu-helper' hook claude"])
         }
         let hook = try XCTUnwrap(((settings["hooks"] as? [String: Any])?["Stop"] as? [[String: Any]])?.first?["hooks"] as? [[String: Any]]).first
         XCTAssertEqual(hook?["type"] as? String, "command")
@@ -198,12 +198,12 @@ final class CodexTests: XCTestCase {
     let surface = UUID(), workspace = UUID()
     let now = Date(timeIntervalSince1970: 1_790_000_000)
     let session = "01a0e974-84c5-74f1-bbf6-676b95c1bea9"
-    let flw = "/Applications/Flow Beta.app/Contents/Helpers/flw"
+    let flw = "/Applications/Ombu.app/Contents/Helpers/ombu-helper"
 
     func translate(_ json: String) throws -> AgentEvent? {
         let payload = try XCTUnwrap(HookPayload(
             json: Data(json.utf8), agent: "codex",
-            environment: ["FLOW_SURFACE_ID": surface.uuidString, "FLOW_WORKSPACE_ID": workspace.uuidString], now: now
+            environment: ["OMBU_SURFACE_ID": surface.uuidString, "OMBU_WORKSPACE_ID": workspace.uuidString], now: now
         ))
         return Codex.translate(payload)
     }
@@ -273,7 +273,7 @@ final class CodexTests: XCTestCase {
 
     let settings = ["tui.notifications": #"["approval-requested","plan-mode-prompt","async-question"]"#, "tui.notification_method": #""osc9""#, "tui.notification_condition": #""always""#]
 
-    let hook = #"command="'/Applications/Flow Beta.app/Contents/Helpers/flw' hook codex""#
+    let hook = #"command="'/Applications/Ombu.app/Contents/Helpers/ombu-helper' hook codex""#
 
     func overrides(_ arguments: [String]) -> [String: String] {
         var overrides: [String: String] = [:]
@@ -337,8 +337,8 @@ final class CodexTests: XCTestCase {
 }
 
 final class OpenCodeTests: XCTestCase {
-    let flw = "/Applications/Flow Beta.app/Contents/Helpers/flw"
-    let plugin = "/Applications/Flow Beta.app/Contents/Resources/agents/opencode/flow.js"
+    let flw = "/Applications/Ombu.app/Contents/Helpers/ombu-helper"
+    let plugin = "/Applications/Ombu.app/Contents/Resources/agents/opencode/ombu.js"
 
     func config(_ environment: [String: String]) throws -> [String: Any]? {
         let variables = OpenCode.environment(environment, flw: flw)
@@ -426,7 +426,7 @@ final class AgentLauncherTests: XCTestCase {
     func testRewritesArgumentsAndDropsTheShimVariable() throws {
         let real = try makeExecutable("bin", "claude")
         let shims = root.appendingPathComponent("shims").path
-        let environment = ["PATH": shims + ":" + path("bin"), "FLOW_SHIM_DIR": shims, "HOME": "/Users/me"]
+        let environment = ["PATH": shims + ":" + path("bin"), "OMBU_SHIM_DIR": shims, "HOME": "/Users/me"]
 
         let launcher = try XCTUnwrap(AgentLauncher(.claudeCode, arguments: ["-p", "hi"], environment: environment, flw: "/flw"))
 
@@ -455,7 +455,7 @@ final class AgentLauncherTests: XCTestCase {
 
     func testDisabledLaunchesAsTyped() throws {
         try makeExecutable("bin", "claude")
-        let launcher = AgentLauncher(.claudeCode, arguments: ["-p", "hi"], environment: ["PATH": path("bin"), "FLOW_AGENTS_DISABLED": "1"], flw: "/flw")
+        let launcher = AgentLauncher(.claudeCode, arguments: ["-p", "hi"], environment: ["PATH": path("bin"), "OMBU_AGENTS_DISABLED": "1"], flw: "/flw")
         XCTAssertEqual(launcher?.arguments, ["claude", "-p", "hi"])
     }
 
@@ -469,14 +469,14 @@ final class AgentLauncherTests: XCTestCase {
         let shims = root.appendingPathComponent("shims").path
         let unrelated = try makeExecutable("shims", "notes")
         try makeExecutable("bin", "claude")
-        let flw = "/Applications/Flow.app/Contents/Helpers/flw"
+        let flw = "/Applications/Ombu.app/Contents/Helpers/ombu-helper"
 
         try AgentShims.install(in: shims, path: shims + ":" + path("bin"), flw: flw)
 
         let shim = shims + "/claude"
         XCTAssertEqual(String(decoding: try Data(contentsOf: URL(fileURLWithPath: shim)), as: UTF8.self), """
             #!/bin/sh
-            FLOW_SHIM_DIR='\(shims)' exec '\(flw)' launch claude "$@"
+            OMBU_SHIM_DIR='\(shims)' exec '\(flw)' launch claude "$@"
 
             """)
         XCTAssertEqual(try FileManager.default.attributesOfItem(atPath: shim)[.posixPermissions] as? Int, 0o755)
@@ -501,7 +501,7 @@ final class AgentLauncherTests: XCTestCase {
         let own: pid_t = 4242, dead = deadPID(), running = getpid()
         let live = UUID(), closed = UUID()
         func make(_ path: String) throws {
-            try files.createDirectory(at: root.appendingPathComponent("flow-shims/" + path), withIntermediateDirectories: true)
+            try files.createDirectory(at: root.appendingPathComponent("ombu-shims/" + path), withIntermediateDirectories: true)
         }
         for name in [live.uuidString, closed.uuidString, "not-a-terminal"] {
             try make("\(own)/\(name)")
@@ -512,7 +512,7 @@ final class AgentLauncherTests: XCTestCase {
 
         AgentShims.removeStale(temporaryDirectory: root.path, pid: own) { $0 == live }
 
-        XCTAssertEqual(Set(try files.contentsOfDirectory(atPath: root.appendingPathComponent("flow-shims").path)),
+        XCTAssertEqual(Set(try files.contentsOfDirectory(atPath: root.appendingPathComponent("ombu-shims").path)),
                        ["\(own)", "\(running)", closed.uuidString])
         XCTAssertEqual(try files.contentsOfDirectory(atPath: AgentShims.root(pid: own, temporaryDirectory: root.path)), [live.uuidString])
         XCTAssertEqual(try files.contentsOfDirectory(atPath: AgentShims.root(pid: running, temporaryDirectory: root.path)), [closed.uuidString])

@@ -8,7 +8,7 @@ import Foundation
 /// Flow's `.zshenv` through the `ZDOTDIR` libghostty restores before loading
 /// the user's own.
 enum ShellIntegration {
-    static let zshDirectoryKey = "FLOW_ZSH_ZDOTDIR"
+    static let zshDirectoryKey = "OMBU_ZSH_ZDOTDIR"
 
     static func environment(directory: String, current: [String: String]) -> [String: String] {
         let zsh = (directory as NSString).appendingPathComponent("zsh")

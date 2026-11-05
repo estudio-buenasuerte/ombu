@@ -1,8 +1,8 @@
 # Flow points ZDOTDIR here so that zsh runs this first; the rest of startup
 # must read the user's own files.
-if [[ -n "${FLOW_ZSH_ZDOTDIR+X}" ]]; then
-    'builtin' 'export' ZDOTDIR="$FLOW_ZSH_ZDOTDIR"
-    'builtin' 'unset' 'FLOW_ZSH_ZDOTDIR'
+if [[ -n "${OMBU_ZSH_ZDOTDIR+X}" ]]; then
+    'builtin' 'export' ZDOTDIR="$OMBU_ZSH_ZDOTDIR"
+    'builtin' 'unset' 'OMBU_ZSH_ZDOTDIR'
 else
     'builtin' 'unset' 'ZDOTDIR'
 fi
@@ -15,12 +15,12 @@ fi
     'builtin' 'unset' '_flow_file'
     # The first prompt comes after the user's config has set PATH, so the
     # shims go in front of wherever the agents were installed.
-    if [[ -o 'interactive' && -n "$FLOW_SURFACE_ID" && -n "$FLOW_SHIMS" && -z "$FLOW_AGENTS_DISABLED" ]]; then
+    if [[ -o 'interactive' && -n "$OMBU_SURFACE_ID" && -n "$OMBU_SHIMS" && -z "$OMBU_AGENTS_DISABLED" ]]; then
         _flow_agents_init() {
             precmd_functions=(${precmd_functions:#_flow_agents_init})
             'builtin' 'unfunction' '_flow_agents_init'
-            'builtin' 'local' dir="$FLOW_SHIMS/$FLOW_SURFACE_ID"
-            "$FLOW_FLW" shims "$dir" && 'builtin' 'export' PATH="$dir:$PATH"
+            'builtin' 'local' dir="$OMBU_SHIMS/$OMBU_SURFACE_ID"
+            "$OMBU_HELPER" shims "$dir" && 'builtin' 'export' PATH="$dir:$PATH"
         }
         'builtin' 'typeset' -ga precmd_functions
         precmd_functions+=(_flow_agents_init)

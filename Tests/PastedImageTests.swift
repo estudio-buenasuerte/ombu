@@ -6,7 +6,7 @@ final class PastedImageTests: XCTestCase {
     private var savedPaths: [String] = []
 
     override func setUp() {
-        pasteboard = NSPasteboard(name: .init("dev.thetinygoat.flowTests.\(UUID().uuidString)"))
+        pasteboard = NSPasteboard(name: .init("com.buenasuerte.ombuTests.\(UUID().uuidString)"))
     }
 
     override func tearDown() {

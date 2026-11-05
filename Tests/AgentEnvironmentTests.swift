@@ -5,18 +5,18 @@ final class AgentEnvironmentTests: XCTestCase {
         let surface = UUID(), workspace = UUID()
 
         XCTAssertEqual(AgentEnvironment.variables(surface: surface, workspace: workspace, socket: "/tmp/agent.1.sock",
-                                                  flw: "/Applications/Flow.app/Contents/Helpers/flw", shims: "/tmp/flow-shims/1"), [
-            "FLOW_SURFACE_ID": surface.uuidString,
-            "FLOW_WORKSPACE_ID": workspace.uuidString,
-            "FLOW_SOCKET": "/tmp/agent.1.sock",
-            "FLOW_FLW": "/Applications/Flow.app/Contents/Helpers/flw",
-            "FLOW_SHIMS": "/tmp/flow-shims/1",
+                                                  flw: "/Applications/Ombu.app/Contents/Helpers/ombu-helper", shims: "/tmp/ombu-shims/1"), [
+            "OMBU_SURFACE_ID": surface.uuidString,
+            "OMBU_WORKSPACE_ID": workspace.uuidString,
+            "OMBU_SOCKET": "/tmp/agent.1.sock",
+            "OMBU_HELPER": "/Applications/Ombu.app/Contents/Helpers/ombu-helper",
+            "OMBU_SHIMS": "/tmp/ombu-shims/1",
         ])
     }
 
     func testEachFlowHasItsOwnShims() {
-        XCTAssertEqual(AgentShims.root(temporaryDirectory: "/tmp/"), "/tmp/flow-shims/\(getpid())")
-        XCTAssertEqual(AgentShims.root(), (NSTemporaryDirectory() as NSString).appendingPathComponent("flow-shims/\(getpid())"))
+        XCTAssertEqual(AgentShims.root(temporaryDirectory: "/tmp/"), "/tmp/ombu-shims/\(getpid())")
+        XCTAssertEqual(AgentShims.root(), (NSTemporaryDirectory() as NSString).appendingPathComponent("ombu-shims/\(getpid())"))
     }
 
     func testEachFlowHasItsOwnSocket() {
@@ -46,7 +46,7 @@ final class AgentEnvironmentTests: XCTestCase {
     }
 
     func testShellIntegrationKeepsTheUsersDataDirsAndZdotdir() {
-        let directory = "/Applications/Flow.app/Contents/Resources/shell-integration"
+        let directory = "/Applications/Ombu.app/Contents/Resources/shell-integration"
 
         XCTAssertEqual(ShellIntegration.environment(directory: directory, current: [:]), [
             "XDG_DATA_DIRS": directory + ":/usr/local/share:/usr/share",
@@ -55,7 +55,7 @@ final class AgentEnvironmentTests: XCTestCase {
         XCTAssertEqual(ShellIntegration.environment(directory: directory, current: ["XDG_DATA_DIRS": "/opt/share", "ZDOTDIR": "/Users/me/.zsh"]), [
             "XDG_DATA_DIRS": directory + ":/opt/share",
             "ZDOTDIR": directory + "/zsh",
-            "FLOW_ZSH_ZDOTDIR": "/Users/me/.zsh",
+            "OMBU_ZSH_ZDOTDIR": "/Users/me/.zsh",
         ])
     }
 }

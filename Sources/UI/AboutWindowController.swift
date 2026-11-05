@@ -3,7 +3,7 @@ import AppKit
 /// Replaces the standard About panel so it can show the commit a build came
 /// from and link out to the project.
 final class AboutWindowController: NSWindowController {
-    private static let repository = URL(string: "https://github.com/thetinygoat/flow")!
+    private static let repository = URL(string: "https://github.com/buena-suerte/ombu")!
 
     private let info = Bundle.main.infoDictionary ?? [:]
 
@@ -36,7 +36,7 @@ final class AboutWindowController: NSWindowController {
             icon.heightAnchor.constraint(equalToConstant: 104),
         ])
 
-        let name = NSTextField(labelWithString: "Flow")
+        let name = NSTextField(labelWithString: "Ombú")
         name.font = .systemFont(ofSize: 26, weight: .bold)
 
         let summary = NSTextField(wrappingLabelWithString: "A fast, native terminal built on Ghostty, for everyday work.")
@@ -103,7 +103,7 @@ final class AboutWindowController: NSWindowController {
     }
 
     private func commitLink() -> NSTextField {
-        guard let commit = info["FlowCommit"] as? String else { return value("–") }
+        guard let commit = info["OmbuCommit"] as? String else { return value("–") }
         let url = Self.repository.appendingPathComponent("commit").appendingPathComponent(commit)
         let link = value(commit)
         link.attributedStringValue = NSAttributedString(string: commit, attributes: [
