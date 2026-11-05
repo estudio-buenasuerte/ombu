@@ -3,7 +3,7 @@ import AppKit
 // Renders the Ombú app icon: a white ó cut into raster lines with a soft
 // glow on a near-black squircle. Writes 1024 masters plus a contact sheet;
 // slice the chosen master with sips into both appiconsets.
-// Usage: swiftc scripts/make-icon.swift -o /tmp/make-icon && /tmp/make-icon <out-dir>
+// Usage: swiftc scripts/make-icon.swift -o /tmp/make-icon && /tmp/make-icon <out-dir> [shape-mask.png]
 
 let outDir = CommandLine.arguments[1]
 try! FileManager.default.createDirectory(atPath: outDir, withIntermediateDirectories: true)
@@ -24,20 +24,30 @@ func font(_ family: String, bold: Bool, size: CGFloat) -> NSFont {
 }
 
 var tileTint: NSColor? = nil
+let shapeMaskPath = CommandLine.arguments.count > 2 ? CommandLine.arguments[2] : "macos/Enso/Assets.xcassets/AppIconNext.appiconset/icon_512x512@2x.png"
+let shapeMask: CGImage = {
+    guard let img = NSImage(contentsOfFile: shapeMaskPath), let cg = img.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
+        FileHandle.standardError.write(Data("missing shape mask: \(shapeMaskPath)\n".utf8)); exit(1)
+    }
+    return cg
+}()
 func tile(_ draw: (CGContext) -> Void) -> NSBitmapImageRep {
     let rep = bitmap()
     NSGraphicsContext.saveGraphicsState()
     NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
     let ctx = NSGraphicsContext.current!.cgContext
     let squircle = NSBezierPath(roundedRect: box, xRadius: 186, yRadius: 186)
-    // No drop shadow: macOS 26 treats any pixels outside the squircle as artwork,
-    // shrinks the tile to fit its glass mask and shows a plate around it.
+    // Clip to the alpha of a shipped Apple-shaped icon. macOS 26 compares the
+    // artwork against its own squircle; a hand-drawn corner or a drop shadow
+    // makes it treat the icon as freeform, shrink it and put a plate behind it.
+    ctx.clip(to: CGRect(x: 0, y: 0, width: side, height: side), mask: shapeMask)
     NSColor.black.setFill(); squircle.fill()
-    let top = tileTint.map { NSColor(calibratedWhite: 0.11, alpha: 1).blended(withFraction: 0.10, of: $0)! } ?? NSColor(calibratedWhite: 0.11, alpha: 1)
-    let bottom = tileTint.map { NSColor(calibratedWhite: 0.02, alpha: 1).blended(withFraction: 0.08, of: $0)! } ?? NSColor(calibratedWhite: 0.02, alpha: 1)
+    // A trace of blue keeps the PNG RGB. A pure-grey icon is compiled as a
+    // monochrome image, which macOS 26 treats as a tint template and shows on a plate.
+    let top = tileTint.map { NSColor(calibratedWhite: 0.11, alpha: 1).blended(withFraction: 0.10, of: $0)! } ?? NSColor(calibratedRed: 0.105, green: 0.11, blue: 0.125, alpha: 1)
+    let bottom = tileTint.map { NSColor(calibratedWhite: 0.02, alpha: 1).blended(withFraction: 0.08, of: $0)! } ?? NSColor(calibratedRed: 0.015, green: 0.02, blue: 0.03, alpha: 1)
     NSGradient(starting: top, ending: bottom)!.draw(in: squircle, angle: -90)
     ctx.saveGState(); squircle.addClip(); draw(ctx); ctx.restoreGState()
-    NSColor(calibratedWhite: 1, alpha: 0.14).setStroke(); squircle.lineWidth = 4; squircle.stroke()
     NSGraphicsContext.restoreGraphicsState()
     return rep
 }
