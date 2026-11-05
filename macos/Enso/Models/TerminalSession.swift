@@ -351,17 +351,22 @@ struct TerminalFolder: Identifiable, Hashable, Codable {
     /// last tab is gone so a new tab can start back in the project directory.
     /// Optional, so state files written before this field decode as nil.
     var lastWorkingDirectory: String?
+    /// The user's pick; nil until then, so old state files decode and the row
+    /// shows `displayIcon`.
+    var icon: SidebarSpace.Icon?
 
     init(
         id: UUID = UUID(),
         title: String,
         items: [SidebarPinnedItem],
-        lastWorkingDirectory: String? = nil
+        lastWorkingDirectory: String? = nil,
+        icon: SidebarSpace.Icon? = nil
     ) {
         self.id = id
         self.title = title
         self.items = items
         self.lastWorkingDirectory = lastWorkingDirectory
+        self.icon = icon
     }
 
     /// Sessions-only convenience matching the pre-nesting model.
@@ -371,13 +376,15 @@ struct TerminalFolder: Identifiable, Hashable, Codable {
         id: UUID = UUID(),
         title: String,
         sessions: [TerminalSession] = [],
-        lastWorkingDirectory: String? = nil
+        lastWorkingDirectory: String? = nil,
+        icon: SidebarSpace.Icon? = nil
     ) {
         self.init(
             id: id,
             title: title,
             items: sessions.map(SidebarPinnedItem.tab),
-            lastWorkingDirectory: lastWorkingDirectory
+            lastWorkingDirectory: lastWorkingDirectory,
+            icon: icon
         )
     }
 
@@ -418,7 +425,7 @@ struct TerminalFolder: Identifiable, Hashable, Codable {
     // worst with nested structure flattened, but no tab lost.
 
     private enum CodingKeys: String, CodingKey {
-        case id, title, items, sessions, lastWorkingDirectory
+        case id, title, items, sessions, lastWorkingDirectory, icon
     }
 
     init(from decoder: Decoder) throws {
@@ -426,11 +433,12 @@ struct TerminalFolder: Identifiable, Hashable, Codable {
         let id = try container.decode(UUID.self, forKey: .id)
         let title = try container.decode(String.self, forKey: .title)
         let lastWorkingDirectory = try container.decodeIfPresent(String.self, forKey: .lastWorkingDirectory)
+        let icon = try container.decodeIfPresent(SidebarSpace.Icon.self, forKey: .icon)
         if let items = try container.decodeIfPresent([SidebarPinnedItem].self, forKey: .items) {
-            self.init(id: id, title: title, items: items, lastWorkingDirectory: lastWorkingDirectory)
+            self.init(id: id, title: title, items: items, lastWorkingDirectory: lastWorkingDirectory, icon: icon)
         } else {
             let sessions = try container.decodeIfPresent([TerminalSession].self, forKey: .sessions) ?? []
-            self.init(id: id, title: title, sessions: sessions, lastWorkingDirectory: lastWorkingDirectory)
+            self.init(id: id, title: title, sessions: sessions, lastWorkingDirectory: lastWorkingDirectory, icon: icon)
         }
     }
 
@@ -441,6 +449,7 @@ struct TerminalFolder: Identifiable, Hashable, Codable {
         try container.encode(items, forKey: .items)
         try container.encode(allSessions, forKey: .sessions)
         try container.encodeIfPresent(lastWorkingDirectory, forKey: .lastWorkingDirectory)
+        try container.encodeIfPresent(icon, forKey: .icon)
     }
 }
 

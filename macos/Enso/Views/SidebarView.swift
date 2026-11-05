@@ -951,6 +951,7 @@ private struct SpacePage: View {
     @State private var scrollDriver = SidebarScrollDriver()
     @State private var renamingFolderID: TerminalFolder.ID?
     @State private var draftFolderTitle = ""
+    @State private var iconPickerFolderID: TerminalFolder.ID?
     @FocusState private var folderRenameFocused: Bool
     @State private var newTabHovered = false
     /// The Active list's order while the pointer is over it, so rows don't
@@ -1386,11 +1387,7 @@ private struct SpacePage: View {
 
         return VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 8) {
-                Image(isExpanded ? "FolderOpen16" : "FolderClosed16")
-                    .resizable()
-                    .renderingMode(.template)
-                    .aspectRatio(contentMode: .fit)
-                    .foregroundStyle(Theme.ink.opacity(0.6))
+                FolderIconView(icon: folder.displayIcon, size: 16)
                     .frame(width: 16, height: 16)
                     .frame(width: 16)
 
@@ -1480,6 +1477,18 @@ private struct SpacePage: View {
                     toggleExpansion(folder)
                 }
             })
+            .popover(
+                isPresented: Binding(
+                    get: { iconPickerFolderID == folder.id },
+                    set: { if !$0 && iconPickerFolderID == folder.id { iconPickerFolderID = nil } }
+                ),
+                arrowEdge: .trailing
+            ) {
+                FolderIconPicker(current: folder.displayIcon) { icon in
+                    store.setFolderIcon(folder.id, icon)
+                    iconPickerFolderID = nil
+                }
+            }
             .contextMenu {
                 Button("New Terminal in Folder", systemImage: "plus") {
                     store.createSession(inFolder: folder.id)
@@ -1487,6 +1496,9 @@ private struct SpacePage: View {
                 Divider()
                 Button("Rename Folder", systemImage: "pencil") {
                     beginFolderRename(folder)
+                }
+                Button("Change Icon…", systemImage: "face.smiling") {
+                    iconPickerFolderID = folder.id
                 }
                 if store.spaces.count > 1 {
                     Menu("Move to Space") {

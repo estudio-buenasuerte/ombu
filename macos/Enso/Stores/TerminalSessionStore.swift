@@ -1656,6 +1656,15 @@ final class TerminalSessionStore: ObservableObject {
         save()
     }
 
+    func setFolderIcon(_ folderID: TerminalFolder.ID, _ icon: SidebarSpace.Icon) {
+        for spaceIndex in spaces.indices {
+            if spaces[spaceIndex].modifyFolder(folderID, { $0.icon = icon }) {
+                break
+            }
+        }
+        save()
+    }
+
     /// Live cwd reported by shell integration (OSC 7 → ghostty PWD action).
     /// Persisted, so a restored session's surface respawns where it left off.
     func updateWorkingDirectory(_ sessionID: TerminalSession.ID, to path: String) {
