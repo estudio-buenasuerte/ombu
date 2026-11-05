@@ -2,7 +2,7 @@ import AppKit
 
 // Renders the Ombú app icon: ABC Diatype Mono's ó cut into eight horizontal
 // bars after IBM's 1972 mark, the bar ends rounded and softly glowing like a
-// tube, white on a near-black squircle. Writes 1024 masters plus a contact sheet;
+// tube, white on a dark grey squircle. Writes 1024 masters plus a contact sheet;
 // slice the chosen master with sips into both appiconsets.
 // Usage: swiftc scripts/make-icon.swift -o /tmp/make-icon && /tmp/make-icon <out-dir> [shape-mask.png]
 
@@ -45,9 +45,11 @@ func tile(_ draw: (CGContext) -> Void) -> NSBitmapImageRep {
     NSColor.black.setFill(); squircle.fill()
     // A trace of blue keeps the PNG RGB. A pure-grey icon is compiled as a
     // monochrome image, which macOS 26 treats as a tint template and shows on a plate.
-    let top = tileTint.map { NSColor(calibratedWhite: 0.11, alpha: 1).blended(withFraction: 0.10, of: $0)! } ?? NSColor(calibratedRed: 0.105, green: 0.11, blue: 0.125, alpha: 1)
-    let bottom = tileTint.map { NSColor(calibratedWhite: 0.02, alpha: 1).blended(withFraction: 0.08, of: $0)! } ?? NSColor(calibratedRed: 0.015, green: 0.02, blue: 0.03, alpha: 1)
+    let top = tileTint.map { NSColor(calibratedWhite: 0.11, alpha: 1).blended(withFraction: 0.10, of: $0)! } ?? NSColor(calibratedRed: 0.205, green: 0.21, blue: 0.225, alpha: 1)
+    let bottom = tileTint.map { NSColor(calibratedWhite: 0.02, alpha: 1).blended(withFraction: 0.08, of: $0)! } ?? NSColor(calibratedRed: 0.095, green: 0.10, blue: 0.11, alpha: 1)
     NSGradient(starting: top, ending: bottom)!.draw(in: squircle, angle: -90)
+    // A faint rim so the tile keeps its edge against a dark Dock.
+    NSColor(calibratedWhite: 1, alpha: 0.16).setStroke(); squircle.lineWidth = 8; squircle.stroke()
     ctx.saveGState(); squircle.addClip(); draw(ctx); ctx.restoreGState()
     NSGraphicsContext.restoreGraphicsState()
     return rep
