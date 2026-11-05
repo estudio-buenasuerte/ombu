@@ -49,9 +49,8 @@ func artPath(pointSize: CGFloat) -> (CGPath, CGRect) {
             var glyph = CGGlyph()
             var unichar = Array(String(character).utf16)
             guard CTFontGetGlyphsForCharacters(scaled, &unichar, &glyph, 1), let outline = CTFontCreatePathForGlyph(scaled, glyph, nil) else { continue }
-            var transform = CGAffineTransform(translationX: CGFloat(column) * advance, y: y)
+            let transform = CGAffineTransform(translationX: CGFloat(column) * advance, y: y)
             path.addPath(outline, transform: transform)
-            _ = transform
         }
     }
     return (path, path.boundingBoxOfPath)
@@ -89,7 +88,7 @@ func render(size: CGFloat) -> NSImage {
     context.restoreGState()
 
     // The tree, sized to the tile, then centred on its own bounds.
-    let (probe, probeBounds) = artPath(pointSize: 100)
+    let (_, probeBounds) = artPath(pointSize: 100)
     let fit = min(rect.width * widthShare / probeBounds.width, rect.height * 0.66 / probeBounds.height)
     let pointSize = 100 * fit
     let (path, bounds) = artPath(pointSize: pointSize)
