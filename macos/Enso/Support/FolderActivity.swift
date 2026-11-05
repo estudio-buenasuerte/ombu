@@ -42,16 +42,11 @@ enum FolderNaming {
     static func name(forDirectory directory: String) -> String {
         let directoryURL = URL(fileURLWithPath: (directory as NSString).expandingTildeInPath)
             .standardizedFileURL
-        let homeURL = URL(fileURLWithPath: NSHomeDirectory()).standardizedFileURL
-        var current = directoryURL
-        while true {
-            if FileManager.default.fileExists(atPath: current.appendingPathComponent(".git").path) {
-                // A repository at home is usually dotfiles, not the tab's project.
-                return current.path == homeURL.path ? directoryURL.lastPathComponent : current.lastPathComponent
-            }
-            let parent = current.deletingLastPathComponent()
-            if parent.path == current.path { return directoryURL.lastPathComponent }
-            current = parent
+        // A repository at home is usually dotfiles, not the tab's project.
+        if let repository = GitRepository(containing: directoryURL.path),
+           repository.workTree != GitRepository.home {
+            return URL(fileURLWithPath: repository.workTree).lastPathComponent
         }
+        return directoryURL.lastPathComponent
     }
 }

@@ -92,6 +92,11 @@ struct FolderActivityTests {
         #expect(store.activeSpace.pinnedFolders.first?.activity == (agentStillOpen ? .working : nil))
     }
 
+    private func makeGitDir(at url: URL) throws {
+        try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        try Data("ref: refs/heads/main\n".utf8).write(to: url.appendingPathComponent("HEAD"))
+    }
+
     private func withTemporaryDirectory(_ test: (URL) throws -> Void) throws {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("EnsoFolderTests-\(UUID().uuidString)", isDirectory: true)
@@ -106,16 +111,20 @@ struct FolderActivityTests {
             let repo = root.appendingPathComponent("project")
             let nested = repo.appendingPathComponent("Sources/Feature")
             try FileManager.default.createDirectory(at: nested, withIntermediateDirectories: true)
+            // Discovery wants a real git dir: one with a HEAD, reached directly
+            // or through a worktree's "gitdir:" pointer file.
             let git = repo.appendingPathComponent(".git")
             if gitIsDirectory {
-                try FileManager.default.createDirectory(at: git, withIntermediateDirectories: true)
+                try makeGitDir(at: git)
             } else {
-                try Data("gitdir: /unused/worktree".utf8).write(to: git)
+                let worktreeGitDir = root.appendingPathComponent("worktree-gitdir")
+                try makeGitDir(at: worktreeGitDir)
+                try Data("gitdir: \(worktreeGitDir.path)".utf8).write(to: git)
             }
             #expect(FolderNaming.name(forDirectory: repo.path) == "project")
             #expect(FolderNaming.name(forDirectory: nested.path) == "project")
 
-            try FileManager.default.createDirectory(at: nested.appendingPathComponent(".git"), withIntermediateDirectories: true)
+            try makeGitDir(at: nested.appendingPathComponent(".git"))
             #expect(FolderNaming.name(forDirectory: nested.path) == "Feature")
         }
     }
@@ -134,7 +143,7 @@ struct FolderActivityTests {
             let repo = root.appendingPathComponent("project")
             let nested = repo.appendingPathComponent("Sources")
             try FileManager.default.createDirectory(at: nested, withIntermediateDirectories: true)
-            try FileManager.default.createDirectory(at: repo.appendingPathComponent(".git"), withIntermediateDirectories: true)
+            try makeGitDir(at: repo.appendingPathComponent(".git"))
             let first = TerminalSession(title: "first", workingDirectory: nested.path)
             let second = TerminalSession(title: "second", workingDirectory: root.path)
             let space = SidebarSpace(name: "Main", ephemeralSessions: [first, second])

@@ -62,6 +62,9 @@
 		0BAAA274E5C7A80590020000 /* FolderIconPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0BAAA274E5C7A80590010000 /* FolderIconPicker.swift */; };
 		0B03F5AA6B8B8B5DD8020000 /* FolderActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B03F5AA6B8B8B5DD8010000 /* FolderActivity.swift */; };
 		0B07219694B6FCE3D1020000 /* FolderActivityDot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B07219694B6FCE3D1010000 /* FolderActivityDot.swift */; };
+		ED4CF4CE520B4E9D94B780ED /* GitStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88C05D1E0A7748DEA106F242 /* GitStatus.swift */; };
+		985945002105458BBBD0E511 /* FolderGitStatusModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD913F38A7034666920E5B31 /* FolderGitStatusModel.swift */; };
+		FA3E0057ACE94D05B49F9991 /* FolderGitLine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FCF229F6D7A48F5B41F1D66 /* FolderGitLine.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -139,6 +142,9 @@
 		0BAAA274E5C7A80590010000 /* FolderIconPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderIconPicker.swift; sourceTree = "<group>"; };
 		0B03F5AA6B8B8B5DD8010000 /* FolderActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderActivity.swift; sourceTree = "<group>"; };
 		0B07219694B6FCE3D1010000 /* FolderActivityDot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderActivityDot.swift; sourceTree = "<group>"; };
+		88C05D1E0A7748DEA106F242 /* GitStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitStatus.swift; sourceTree = "<group>"; };
+		FD913F38A7034666920E5B31 /* FolderGitStatusModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderGitStatusModel.swift; sourceTree = "<group>"; };
+		4FCF229F6D7A48F5B41F1D66 /* FolderGitLine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderGitLine.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -284,6 +290,8 @@
 				A1FGRES022FD810C30001BF12 /* ForegroundProcessResolver.swift */,
 				A1UPDCTL022FD810C30001BF12 /* UpdateController.swift */,
 				A1RELNTP022FD810C30001BF12 /* ReleaseNotesParser.swift */,
+				88C05D1E0A7748DEA106F242 /* GitStatus.swift */,
+				FD913F38A7034666920E5B31 /* FolderGitStatusModel.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -320,6 +328,7 @@
 				A1WHTNEW022FD810C30001BF12 /* WhatsNewSheet.swift */,
 				0BAAA274E5C7A80590010000 /* FolderIconPicker.swift */,
 				0B07219694B6FCE3D1010000 /* FolderActivityDot.swift */,
+				4FCF229F6D7A48F5B41F1D66 /* FolderGitLine.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -532,6 +541,9 @@
 				0BAAA274E5C7A80590020000 /* FolderIconPicker.swift in Sources */,
 				0B03F5AA6B8B8B5DD8020000 /* FolderActivity.swift in Sources */,
 				0B07219694B6FCE3D1020000 /* FolderActivityDot.swift in Sources */,
+				ED4CF4CE520B4E9D94B780ED /* GitStatus.swift in Sources */,
+				985945002105458BBBD0E511 /* FolderGitStatusModel.swift in Sources */,
+				FA3E0057ACE94D05B49F9991 /* FolderGitLine.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -4,6 +4,7 @@ import UniformTypeIdentifiers
 
 struct SidebarView: View {
     @ObservedObject var store: TerminalSessionStore
+    @StateObject private var folderGitStatus = FolderGitStatusModel()
 
     @ObservedObject private var updateController = UpdateController.shared
     @Environment(\.controlActiveState) private var controlActiveState
@@ -39,6 +40,9 @@ struct SidebarView: View {
         .opacity(isWindowInactive ? 0.6 : 1)
         // Clear space for the traffic lights and the top line.
         .padding(.top, SidebarChromeMetrics.topClearance)
+        .onChange(of: store.spaces, initial: true) { _, spaces in
+            folderGitStatus.watch(spaces)
+        }
         .overlay(alignment: .bottom) {
             SidebarFooter(
                 store: store,
@@ -80,6 +84,7 @@ struct SidebarView: View {
         SpacePagerRepresentable(
             pager: spacePager,
             store: store,
+            folderGitStatus: folderGitStatus,
             spaces: store.spaces,
             activeSpaceID: store.activeSpaceID,
             pageWidth: pageWidth
@@ -690,6 +695,7 @@ private final class SpacePagerView: NSView {
 private struct SpacePagerRepresentable: NSViewRepresentable {
     let pager: SpacePager
     let store: TerminalSessionStore
+    let folderGitStatus: FolderGitStatusModel
     let spaces: [SidebarSpace]
     let activeSpaceID: SidebarSpace.ID
     let pageWidth: CGFloat
@@ -712,7 +718,7 @@ private struct SpacePagerRepresentable: NSViewRepresentable {
             pageWidth: pageWidth,
             animated: context.transaction.animation != nil
         ) { space in
-            SpacePage(store: store, space: space)
+            SpacePage(store: store, folderGitStatus: folderGitStatus, space: space)
         }
         view.needsLayout = true
     }
@@ -911,6 +917,7 @@ private enum SidebarDisplayEntry: Identifiable {
 
 private struct SpacePage: View {
     @ObservedObject var store: TerminalSessionStore
+    @ObservedObject var folderGitStatus: FolderGitStatusModel
     @ObservedObject private var namer = TabAutoNamer.shared
     /// Observed so dormant moons track the store live: consumption, tab
     /// close, the Settings toggle, and launch-time restorability resolution
@@ -1404,22 +1411,27 @@ private struct SpacePage: View {
                             renamingFolderID = nil
                         }
                 } else {
-                    Text(folder.title)
-                        .font(PaletteFont.primary(.medium))
-                        .tracking(PaletteFont.tracking)
-                        .foregroundStyle(Theme.text(0.82))
-                        .lineLimit(1)
-                        // Rename only on the title text; elsewhere the row
-                        // just toggles expansion.
-                        .simultaneousGesture(TapGesture().onEnded {
-                            guard renamingFolderID != folder.id else { return }
-                            if NSApp.currentEvent?.clickCount == 2 {
-                                // Undo the first click's expansion flip,
-                                // then rename inline.
-                                toggleExpansion(folder)
-                                beginFolderRename(folder)
-                            }
-                        })
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(folder.title)
+                            .font(PaletteFont.primary(.medium))
+                            .tracking(PaletteFont.tracking)
+                            .foregroundStyle(Theme.text(0.82))
+                            .lineLimit(1)
+                            // Rename only on the title text; elsewhere the row
+                            // just toggles expansion.
+                            .simultaneousGesture(TapGesture().onEnded {
+                                guard renamingFolderID != folder.id else { return }
+                                if NSApp.currentEvent?.clickCount == 2 {
+                                    // Undo the first click's expansion flip,
+                                    // then rename inline.
+                                    toggleExpansion(folder)
+                                    beginFolderRename(folder)
+                                }
+                            })
+                        if let status = folderGitStatus.status(for: folder) {
+                            FolderGitLine(status: status)
+                        }
+                    }
                 }
 
                 Spacer(minLength: 0)
