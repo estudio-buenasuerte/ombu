@@ -9,10 +9,12 @@ struct TerminalCommands: Commands {
 
     var body: some Commands {
         CommandGroup(after: .appInfo) {
-            Button("Check for Updates…") {
-                // All update feedback lives in the sidebar card; surface it.
-                store.isSidebarVisible = true
-                UpdateController.shared.checkForUpdates()
+            if Bundle.main.object(forInfoDictionaryKey: "SUFeedURL") as? String != nil {
+                Button("Check for Updates…") {
+                    // All update feedback lives in the sidebar card; surface it.
+                    store.isSidebarVisible = true
+                    UpdateController.shared.checkForUpdates()
+                }
             }
         }
 

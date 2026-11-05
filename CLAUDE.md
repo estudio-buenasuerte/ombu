@@ -7,6 +7,8 @@ fork) lives on the `appkit` branch for reference.
 
 ## Build
 
+The product is named `Ombu` (ASCII) and only the display name carries the accent: codesign fails on an accented executable name.
+
 ```sh
 ./scripts/build-ghosttykit.sh      # once per Ghostty bump: Zig build of Vendor/ghostty, linked into macos/
 xcodebuild -project macos/Enso.xcodeproj -scheme Enso -configuration Debug -derivedDataPath build/DerivedData build
@@ -34,8 +36,8 @@ records the Ghostty and Enso versions Ombú is on and how to take a new one.
    inherit `CLAUDECODE`, `CLAUDE_CODE_*`, `ENSO_*` or `GHOSTTY_*` from your session:
 
    ```
-   pkill -f "Debug/Ombú Dev.app/Contents/MacOS/Ombú Dev"
-   env -i /usr/bin/open build/DerivedData/Build/Products/Debug/Ombú\ Dev.app
+   pkill -f "Debug/Ombu Dev.app/Contents/MacOS/Ombu Dev"
+   env -i /usr/bin/open "build/DerivedData/Build/Products/Debug/Ombu Dev.app"
    ```
 
 6. Taking an Enso release: `git fetch enso --tags`, `git merge <tag>`, resolve,

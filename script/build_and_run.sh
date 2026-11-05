@@ -9,7 +9,7 @@ set -euo pipefail
 MODE="${1:-run}"
 # Debug PRODUCT_NAME is "Enso Dev" so the Dock and app menu carry the
 # nightly name; the Xcode target and scheme are still "Enso".
-APP_NAME="Enso Dev"
+APP_NAME="Ombu Dev"
 PROJECT="macos/Enso.xcodeproj"
 SCHEME="Enso"
 CONFIGURATION="Debug"

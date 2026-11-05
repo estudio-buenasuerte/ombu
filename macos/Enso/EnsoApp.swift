@@ -7,26 +7,22 @@
 
 import SwiftUI
 
-/// Root Application Support directory for this build identity. Three build
-/// identities can run side by side — Dev (debug builds), Next (the
-/// pre-release channel), and stable Enso — and two live apps sharing
-/// state.json is last-writer-wins data loss: whichever saves second silently
-/// erases the other's tabs. So each identity gets its own folder; Dev and
-/// Next seed themselves once with a COPY of the stable release's state so
-/// they start from real tabs without ever writing back.
+/// Each build identity gets its own Application Support folder so concurrent
+/// apps cannot overwrite each other's state. Ombú starts fresh; only Enso
+/// identities may import state from earlier Enso releases.
 enum EnsoAppSupport {
-    /// Folder name for this build identity. Debug builds are "Enso Dev"
+    /// Folder name for this build identity. Debug builds are "Ombú Dev"
     /// (compile-time — they keep the .debug bundle id). Release-family
     /// builds distinguish Next from stable at runtime by bundle id suffix,
     /// since ReleaseNext compiles without DEBUG.
     static let folderName: String = {
         #if DEBUG
-        return "Enso Dev"
+        return "Ombú Dev"
         #else
         if Bundle.main.bundleIdentifier?.hasSuffix(".next") == true {
             return "Enso Next"
         }
-        return "Enso"
+        return "Ombú"
         #endif
     }()
 
@@ -35,9 +31,9 @@ enum EnsoAppSupport {
         let appSupport = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         let dir = appSupport.appendingPathComponent(folderName, isDirectory: true)
 
-        // Stable keeps its historical behavior untouched (no eager create,
-        // no seeding — TerminalSessionStore owns that path's lifecycle).
-        guard folderName != "Enso" else { return dir }
+        // Ombú starts fresh rather than importing another app's state.
+        // TerminalSessionStore owns the directory's creation.
+        guard folderName != "Enso", !folderName.hasPrefix("Ombú") else { return dir }
 
         if !fm.fileExists(atPath: dir.path) {
             #if DEBUG

@@ -553,17 +553,19 @@ final class CommandCenter: ObservableObject {
             store?.createSpace(name: "", icon: .dot)
         })
 
-        commands.append(PaletteItem(
-            id: "cmd-check-updates",
-            icon: .symbol("arrow.down.circle"),
-            title: "Check for Updates",
-            context: nil,
-            verb: "Run"
-        ) { [weak store] in
-            // All update feedback lives in the sidebar card; surface it.
-            store?.isSidebarVisible = true
-            UpdateController.shared.checkForUpdates()
-        })
+        if Bundle.main.object(forInfoDictionaryKey: "SUFeedURL") as? String != nil {
+            commands.append(PaletteItem(
+                id: "cmd-check-updates",
+                icon: .symbol("arrow.down.circle"),
+                title: "Check for Updates",
+                context: nil,
+                verb: "Run"
+            ) { [weak store] in
+                // All update feedback lives in the sidebar card; surface it.
+                store?.isSidebarVisible = true
+                UpdateController.shared.checkForUpdates()
+            })
+        }
 
         // On-demand changelog: reopens the What's New sheet with the
         // running version's notes. Hidden when the build carries none

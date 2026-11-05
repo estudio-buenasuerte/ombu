@@ -81,6 +81,7 @@ final class UpdateController: NSObject, ObservableObject {
 
     func start() {
         guard updater == nil else { return }
+        guard Bundle.main.object(forInfoDictionaryKey: "SUFeedURL") as? String != nil else { return }
         #if DEBUG
         // Day-to-day dev runs never hit the public appcast; opt in with
         // ENSO_SPARKLE=1 to exercise the real update flow from Xcode.
@@ -165,6 +166,7 @@ final class UpdateController: NSObject, ObservableObject {
     /// exercised in dev builds, where Sparkle is off. The Update button
     /// no-ops — there's no pending Sparkle reply to consume.
     func debugSimulateUpdateFound() {
+        guard Bundle.main.object(forInfoDictionaryKey: "SUFeedURL") as? String != nil else { return }
         pendingVersion = "0.5.0"
         releaseNotes = ReleaseNotesParser.parse(html: Self.debugNotesHTML, version: pendingVersion)
         phase = .available(version: pendingVersion)

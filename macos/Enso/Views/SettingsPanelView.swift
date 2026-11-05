@@ -297,8 +297,9 @@ private struct GeneralSettings: View {
         } header: {
             Text("Updates")
         } footer: {
-            Text("Enso \(UpdateController.shared.currentVersion)")
+            Text("\(Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String ?? "Enso") \(UpdateController.shared.currentVersion)")
         }
+        .disabled(Bundle.main.object(forInfoDictionaryKey: "SUFeedURL") as? String == nil)
 
         #if ENSO_DEVTOOLS
         DeveloperSettings()

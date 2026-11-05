@@ -2009,7 +2009,7 @@ final class TerminalSessionStore: ObservableObject {
 
     private static let stateURL: URL = {
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        // Per-build-identity folder (debug builds get "Enso Dev", the Next
+        // Per-build-identity folder (debug builds get "Ombú Dev", the Next
         // channel gets "Enso Next") so a dev or Next build running alongside
         // the installed Enso can't clobber its state.json — two live writers
         // is last-writer-wins data loss.
@@ -2020,7 +2020,8 @@ final class TerminalSessionStore: ObservableObject {
         // was the identity before that. The app support folder is keyed on
         // this literal name, not the bundle id, so the rename would otherwise
         // orphan a user's saved sessions.
-        if !FileManager.default.fileExists(atPath: base.path) {
+        if !EnsoAppSupport.folderName.hasPrefix("Ombú"),
+           !FileManager.default.fileExists(atPath: base.path) {
             for legacyName in ["Bloom", "cmux-alternative"] {
                 let legacy = appSupport.appendingPathComponent(legacyName, isDirectory: true)
                 if FileManager.default.fileExists(atPath: legacy.path) {
