@@ -60,6 +60,8 @@
 		A1WHTNEW012FD810C30001BF12 /* WhatsNewSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1WHTNEW022FD810C30001BF12 /* WhatsNewSheet.swift */; };
 		0B1AC28CB94FC789E5020000 /* FolderIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B1AC28CB94FC789E5010000 /* FolderIcon.swift */; };
 		0BAAA274E5C7A80590020000 /* FolderIconPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0BAAA274E5C7A80590010000 /* FolderIconPicker.swift */; };
+		0B03F5AA6B8B8B5DD8020000 /* FolderActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B03F5AA6B8B8B5DD8010000 /* FolderActivity.swift */; };
+		0B07219694B6FCE3D1020000 /* FolderActivityDot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B07219694B6FCE3D1010000 /* FolderActivityDot.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -135,6 +137,8 @@
 		A1WHTNEW022FD810C30001BF12 /* WhatsNewSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhatsNewSheet.swift; sourceTree = "<group>"; };
 		0B1AC28CB94FC789E5010000 /* FolderIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderIcon.swift; sourceTree = "<group>"; };
 		0BAAA274E5C7A80590010000 /* FolderIconPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderIconPicker.swift; sourceTree = "<group>"; };
+		0B03F5AA6B8B8B5DD8010000 /* FolderActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderActivity.swift; sourceTree = "<group>"; };
+		0B07219694B6FCE3D1010000 /* FolderActivityDot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderActivityDot.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -237,6 +241,7 @@
 			children = (
 				A1THEME022FD810C30001BF12 /* AppTheme.swift */,
 				0B1AC28CB94FC789E5010000 /* FolderIcon.swift */,
+				0B03F5AA6B8B8B5DD8010000 /* FolderActivity.swift */,
 			);
 			path = Support;
 			sourceTree = "<group>";
@@ -314,6 +319,7 @@
 				A1UPDCRD022FD810C30001BF12 /* UpdateCardView.swift */,
 				A1WHTNEW022FD810C30001BF12 /* WhatsNewSheet.swift */,
 				0BAAA274E5C7A80590010000 /* FolderIconPicker.swift */,
+				0B07219694B6FCE3D1010000 /* FolderActivityDot.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -524,6 +530,8 @@
 				A1WHTNEW012FD810C30001BF12 /* WhatsNewSheet.swift in Sources */,
 				0B1AC28CB94FC789E5020000 /* FolderIcon.swift in Sources */,
 				0BAAA274E5C7A80590020000 /* FolderIconPicker.swift in Sources */,
+				0B03F5AA6B8B8B5DD8020000 /* FolderActivity.swift in Sources */,
+				0B07219694B6FCE3D1020000 /* FolderActivityDot.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

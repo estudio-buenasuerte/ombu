@@ -444,6 +444,7 @@ final class TerminalSessionStore: ObservableObject {
                         return
                     }
                     folder.items.insert(.tab(session), at: index + 1)
+                    folder.initializeWorkingDirectory(session.workingDirectory)
                     revealFolderID = folder.id
                     inserted = true
                 }
@@ -483,7 +484,10 @@ final class TerminalSessionStore: ObservableObject {
                 ?? folder.allSessions.max(by: { $0.lastActivity < $1.lastActivity })?.workingDirectory
                 ?? Self.existingDirectory(folder.lastWorkingDirectory)
             let session = Self.makeSession(workingDirectory: cwd, accentIndex: sessions.count)
-            spaces[spaceIndex].modifyFolder(folderID) { $0.items.append(.tab(session)) }
+            spaces[spaceIndex].modifyFolder(folderID) {
+                $0.items.append(.tab(session))
+                $0.initializeWorkingDirectory(session.workingDirectory)
+            }
             // Reveal the new tab even if the folder (or any ancestor) was
             // collapsed.
             expandFolderPath(to: folderID)
@@ -507,7 +511,10 @@ final class TerminalSessionStore: ObservableObject {
         guard !moved.isEmpty else { return }
         withSpace(spaceID) { space in
             space.pinnedItems.append(
-                .folder(TerminalFolder(title: "Folder \(space.pinnedFolders.count + 1)", sessions: moved))
+                .folder(TerminalFolder(
+                    title: FolderNaming.name(forDirectory: moved[0].workingDirectory), sessions: moved,
+                    lastWorkingDirectory: moved[0].workingDirectory
+                ))
             )
         }
         save()
@@ -685,6 +692,7 @@ final class TerminalSessionStore: ObservableObject {
                     return
                 }
                 folder.items.insert(.tab(session), at: index + 1)
+                folder.initializeWorkingDirectory(session.workingDirectory)
                 revealFolderID = folder.id
                 inserted = true
             }
@@ -765,6 +773,7 @@ final class TerminalSessionStore: ObservableObject {
         for spaceIndex in spaces.indices {
             if spaces[spaceIndex].modifyFolder(folderID, {
                 $0.items.append(contentsOf: moved.map(SidebarPinnedItem.tab))
+                $0.initializeWorkingDirectory(moved[0].workingDirectory)
             }) {
                 break
             }
@@ -809,6 +818,7 @@ final class TerminalSessionStore: ObservableObject {
                     return
                 }
                 folder.items.insert(contentsOf: moved.map(SidebarPinnedItem.tab), at: index)
+                folder.initializeWorkingDirectory(moved[0].workingDirectory)
                 insertedInFolder = true
             }
             if insertedInFolder {
@@ -839,6 +849,11 @@ final class TerminalSessionStore: ObservableObject {
             if spaces[spaceIndex].pinnedItems.insert(
                 moved.map(SidebarPinnedItem.tab), beforeItem: folderID
             ) {
+                spaces[spaceIndex].modifyFolders {
+                    if $0.items.contains(where: { $0.id == folderID }) {
+                        $0.initializeWorkingDirectory(moved[0].workingDirectory)
+                    }
+                }
                 save()
                 return
             }
@@ -899,6 +914,7 @@ final class TerminalSessionStore: ObservableObject {
                 if losesDirectTab,
                    let lastActive = folder.sessions.max(by: { $0.lastActivity < $1.lastActivity }) {
                     folder.lastWorkingDirectory = lastActive.workingDirectory
+                    folder.nameIfDefault(forDirectory: lastActive.workingDirectory)
                 }
                 moved += extractSessions(sessionIDs, from: &folder.items)
                 items[index] = .folder(folder)
@@ -1690,6 +1706,7 @@ final class TerminalSessionStore: ObservableObject {
             spaces[spaceIndex].modifyFolders { folder in
                 guard !found, folder.sessions.contains(where: { $0.id == sessionID }) else { return }
                 folder.lastWorkingDirectory = path
+                folder.nameIfDefault(forDirectory: path)
                 found = true
             }
             if found { return }
@@ -1758,6 +1775,7 @@ final class TerminalSessionStore: ObservableObject {
         let alreadyMarked = session.status == .attention
         update(tabID) { item in
             item.status = .attention
+            item.attentionKind = kind == .needsInput ? .needsInput : .finishedResponding
             item.lastActivity = .now
         }
         if kind == .finishedResponding, alreadyMarked { return nil }
@@ -1783,7 +1801,10 @@ final class TerminalSessionStore: ObservableObject {
         // A sleeping tab has no shell to be running: it goes back to the
         // idle state the sleep set, not to .running. Reachable whenever a
         // non-waking selection lands on a sleeping row whose dot is lit.
-        update(sessionID) { $0.status = session.isSleeping ? .idle : .running }
+        update(sessionID) {
+            $0.status = session.isSleeping ? .idle : .running
+            $0.attentionKind = nil
+        }
         onAttentionCleared?(sessionID)
     }
 

@@ -1442,6 +1442,9 @@ private struct SpacePage: View {
                             .rotationEffect(.degrees(isExpanded ? 90 : 0))
                             .frame(width: 24, height: 24)
                     }
+                } else if let activity = folder.activity {
+                    FolderActivityDot(activity: activity)
+                        .padding(.trailing, 5)
                 }
             }
             // 24pt content box in 4pt vertical insets: same 32pt row as the
