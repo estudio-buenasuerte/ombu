@@ -5,6 +5,31 @@ import AppKit
 /// Ghostty theme, so the chrome follows the window's appearance instead,
 /// which the terminal background decides.
 enum Theme {
+    /// The chrome shares the terminal's type family. The faces are read from
+    /// the user's installed fonts, so a machine without Diatype falls back
+    /// to the system font instead of failing.
+    static func font(_ size: CGFloat, weight: NSFont.Weight = .regular) -> NSFont {
+        NSFont(name: "ABCDiatype-\(fontWeightName(weight))", size: size)
+            ?? NSFont.systemFont(ofSize: size, weight: weight)
+    }
+
+    /// Code details in the same family, with the same fallback.
+    static func monoFont(_ size: CGFloat, weight: NSFont.Weight = .regular) -> NSFont {
+        NSFont(name: "DiatypeCode-\(fontWeightName(weight))", size: size)
+            ?? NSFont.monospacedSystemFont(ofSize: size, weight: weight)
+    }
+
+    private static func fontWeightName(_ weight: NSFont.Weight) -> String {
+        switch weight {
+        case .thin: return "Thin"
+        case .light: return "Light"
+        case .regular: return "Regular"
+        case .medium: return "Medium"
+        case .semibold, .bold, .heavy, .black: return "Bold"
+        default: return "Regular"
+        }
+    }
+
     /// Hairlines, borders and hover washes: white on a dark frost, near-black
     /// on a light one, at the given strength.
     static func ink(_ alpha: CGFloat = 1) -> NSColor {

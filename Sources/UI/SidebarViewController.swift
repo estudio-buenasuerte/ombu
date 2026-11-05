@@ -670,11 +670,11 @@ private final class WorkspaceCellView: SidebarCellView, NSTextFieldDelegate {
 
     init() {
         super.init(frame: .zero)
-        titleLabel.font = .systemFont(ofSize: 14, weight: .medium)
+        titleLabel.font = Theme.font(14, weight: .medium)
         titleLabel.lineBreakMode = .byTruncatingTail
         titleLabel.delegate = self
         detailLabel.textColor = Theme.text(0.45)
-        detailLabel.font = .monospacedSystemFont(ofSize: 11, weight: .regular)
+        detailLabel.font = Theme.monoFont(11, weight: .regular)
         detailLabel.lineBreakMode = .byTruncatingMiddle
 
         let stack = NSStackView(views: [titleLabel, detailLabel])
@@ -825,7 +825,7 @@ private final class TabCellView: SidebarCellView, NSTextFieldDelegate {
 
     init() {
         super.init(frame: .zero)
-        titleLabel.font = .systemFont(ofSize: 14)
+        titleLabel.font = Theme.font(14)
         titleLabel.lineBreakMode = .byTruncatingTail
         titleLabel.delegate = self
         icon.translatesAutoresizingMaskIntoConstraints = false
@@ -974,7 +974,7 @@ private final class NewTerminalCellView: SidebarCellView {
         icon.symbolConfiguration = .init(pointSize: 11, weight: .medium)
         icon.contentTintColor = Theme.text(0.45)
         let label = NSTextField(labelWithString: "New Terminal")
-        label.font = .systemFont(ofSize: 14)
+        label.font = Theme.font(14)
         label.textColor = Theme.text(0.45)
         hairline.wantsLayer = true
         for child in [hairline, icon, label] {

@@ -39,7 +39,7 @@ final class CommandCenterView: NSView, NSTextFieldDelegate, NSTableViewDataSourc
         field.isBordered = false
         field.drawsBackground = false
         field.focusRingType = .none
-        field.font = .systemFont(ofSize: 18)
+        field.font = Theme.font(18)
         field.textColor = Theme.text(0.92)
         field.delegate = self
         field.cell?.isScrollable = true
@@ -70,7 +70,7 @@ final class CommandCenterView: NSView, NSTextFieldDelegate, NSTableViewDataSourc
         searchIcon.symbolConfiguration = .init(pointSize: 17, weight: .regular)
         searchIcon.contentTintColor = Theme.text(0.4)
         let divider = HairlineView()
-        message.font = .systemFont(ofSize: 14)
+        message.font = Theme.font(14)
         message.textColor = .secondaryLabelColor
 
         panel.translatesAutoresizingMaskIntoConstraints = false
@@ -314,7 +314,7 @@ private final class CenterHeaderView: NSTableCellView {
     init(title: String) {
         super.init(frame: .zero)
         let label = NSTextField(labelWithString: title)
-        label.font = .systemFont(ofSize: 13.5)
+        label.font = Theme.font(13.5)
         label.textColor = Theme.text(0.38)
         label.translatesAutoresizingMaskIntoConstraints = false
         addSubview(label)
@@ -342,11 +342,11 @@ private final class CenterEntryView: NSTableCellView {
             icon.contentTintColor = Theme.text(0.7)
         }
         let title = NSTextField(labelWithString: entry.title)
-        title.font = .systemFont(ofSize: 16)
+        title.font = Theme.font(16)
         title.textColor = Theme.text(0.85)
         title.lineBreakMode = .byTruncatingTail
         let detail = NSTextField(labelWithString: entry.detail)
-        detail.font = .systemFont(ofSize: 15)
+        detail.font = Theme.font(15)
         detail.textColor = Theme.text(0.38)
         detail.lineBreakMode = .byTruncatingTail
         detail.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
@@ -390,7 +390,7 @@ private final class KeyCapView: NSView {
         wantsLayer = true
         layer?.cornerRadius = 4
         setContentHuggingPriority(.required, for: .horizontal)
-        label.font = .systemFont(ofSize: 11, weight: .medium)
+        label.font = Theme.font(11, weight: .medium)
         label.textColor = .secondaryLabelColor
         label.alignment = .center
         label.translatesAutoresizingMaskIntoConstraints = false

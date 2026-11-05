@@ -53,7 +53,7 @@ final class CommandPaletteView: NSView, NSTextFieldDelegate, NSTableViewDataSour
         field.isBordered = false
         field.drawsBackground = false
         field.focusRingType = .none
-        field.font = .systemFont(ofSize: 20)
+        field.font = Theme.font(20)
         field.delegate = self
         field.cell?.isScrollable = true
         field.cell?.wraps = false
@@ -85,7 +85,7 @@ final class CommandPaletteView: NSView, NSTextFieldDelegate, NSTableViewDataSour
 
         let divider = PaletteDivider()
 
-        message.font = .systemFont(ofSize: 14)
+        message.font = Theme.font(14)
         message.textColor = .secondaryLabelColor
 
         panel.translatesAutoresizingMaskIntoConstraints = false
@@ -420,15 +420,15 @@ private final class PaletteItemView: NSTableCellView {
         icon = PaneLayoutIcon(layout: item.layout)
         super.init(frame: .zero)
         title.stringValue = item.title
-        title.font = .systemFont(ofSize: 14, weight: .medium)
+        title.font = Theme.font(14, weight: .medium)
         title.lineBreakMode = .byTruncatingTail
         detail.stringValue = item.detail
-        detail.font = .monospacedSystemFont(ofSize: 11, weight: .regular)
+        detail.font = Theme.monoFont(11, weight: .regular)
         detail.textColor = .secondaryLabelColor
         detail.lineBreakMode = .byTruncatingMiddle
         detail.isHidden = item.detail.isEmpty
         workspace.stringValue = item.workspace
-        workspace.font = .systemFont(ofSize: 12)
+        workspace.font = Theme.font(12)
         workspace.textColor = .secondaryLabelColor
         workspace.lineBreakMode = .byTruncatingTail
         workspace.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)

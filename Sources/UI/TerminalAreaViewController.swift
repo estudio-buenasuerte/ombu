@@ -164,10 +164,10 @@ final class PaneHeaderView: SurfaceFillView {
     override init(frame: NSRect) {
         super.init(frame: frame)
         icon.imageScaling = .scaleProportionallyUpOrDown
-        title.font = .systemFont(ofSize: 15)
+        title.font = Theme.font(15)
         title.lineBreakMode = .byTruncatingTail
         title.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-        path.font = .systemFont(ofSize: 13)
+        path.font = Theme.font(13)
         path.lineBreakMode = .byTruncatingMiddle
         path.setContentCompressionResistancePriority(.defaultLow - 1, for: .horizontal)
         for child in [icon, title, path] {
@@ -235,10 +235,10 @@ final class EmptyStateView: SurfaceFillView {
         icon.symbolConfiguration = .init(pointSize: 34, weight: .medium)
         icon.contentTintColor = Theme.text(0.4)
         let title = NSTextField(labelWithString: "No Tabs")
-        title.font = .systemFont(ofSize: 15, weight: .semibold)
+        title.font = Theme.font(15, weight: .semibold)
         title.textColor = Theme.text(0.7)
         let hint = NSTextField(labelWithString: "Press ⌘T to open a new tab.")
-        hint.font = .systemFont(ofSize: 13)
+        hint.font = Theme.font(13)
         hint.textColor = Theme.text(0.45)
         let stack = NSStackView(views: [icon, title, hint])
         stack.orientation = .vertical
