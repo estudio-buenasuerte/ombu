@@ -30,10 +30,9 @@ func tile(_ draw: (CGContext) -> Void) -> NSBitmapImageRep {
     NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
     let ctx = NSGraphicsContext.current!.cgContext
     let squircle = NSBezierPath(roundedRect: box, xRadius: 186, yRadius: 186)
-    ctx.saveGState()
-    ctx.setShadow(offset: CGSize(width: 0, height: -10), blur: 30, color: NSColor(calibratedWhite: 0, alpha: 0.35).cgColor)
+    // No drop shadow: macOS 26 treats any pixels outside the squircle as artwork,
+    // shrinks the tile to fit its glass mask and shows a plate around it.
     NSColor.black.setFill(); squircle.fill()
-    ctx.restoreGState()
     let top = tileTint.map { NSColor(calibratedWhite: 0.11, alpha: 1).blended(withFraction: 0.10, of: $0)! } ?? NSColor(calibratedWhite: 0.11, alpha: 1)
     let bottom = tileTint.map { NSColor(calibratedWhite: 0.02, alpha: 1).blended(withFraction: 0.08, of: $0)! } ?? NSColor(calibratedWhite: 0.02, alpha: 1)
     NSGradient(starting: top, ending: bottom)!.draw(in: squircle, angle: -90)
