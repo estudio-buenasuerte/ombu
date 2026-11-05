@@ -342,6 +342,10 @@ private final class CenterEntryView: NSTableCellView {
         detail.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         let keys = NSStackView(views: entry.shortcut.map(KeyCapView.init))
         keys.spacing = 3
+        // The slack between title and keys belongs to the detail, never to
+        // the caps, which keep the size of their key.
+        keys.setContentHuggingPriority(.required, for: .horizontal)
+        detail.setContentHuggingPriority(.defaultLow, for: .horizontal)
         for view in [icon, title, detail, keys] {
             view.translatesAutoresizingMaskIntoConstraints = false
             addSubview(view)
@@ -375,22 +379,26 @@ private final class KeyCapView: NSView {
         super.init(frame: .zero)
         wantsLayer = true
         layer?.cornerRadius = 4
+        setContentHuggingPriority(.required, for: .horizontal)
         label.font = .systemFont(ofSize: 11, weight: .medium)
         label.textColor = .secondaryLabelColor
         label.alignment = .center
         label.translatesAutoresizingMaskIntoConstraints = false
         addSubview(label)
         NSLayoutConstraint.activate([
-            widthAnchor.constraint(greaterThanOrEqualToConstant: 20),
-            heightAnchor.constraint(equalToConstant: 20),
             label.centerXAnchor.constraint(equalTo: centerXAnchor),
             label.centerYAnchor.constraint(equalTo: centerYAnchor),
-            label.leadingAnchor.constraint(greaterThanOrEqualTo: leadingAnchor, constant: 5),
         ])
     }
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) is not supported")
+    }
+
+    /// A plain view has no size of its own for a stack to hug, so the cap
+    /// says it is as wide as its key plus a margin, and never wider.
+    override var intrinsicContentSize: NSSize {
+        NSSize(width: max(20, label.intrinsicContentSize.width + 10), height: 20)
     }
 
     override var wantsUpdateLayer: Bool { true }
