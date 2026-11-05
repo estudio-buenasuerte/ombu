@@ -780,6 +780,22 @@ extension AppDelegate: TerminalWindowDelegate, TerminalSurfaceViewDelegate {
         scheduleSave()
     }
 
+    func terminalWindow(_ window: TerminalWindow, detach workspace: Workspace, at screenPoint: NSPoint) {
+        guard window.store.workspaces.contains(where: { $0 === workspace }),
+              !windows.contains(where: { $0.window?.frame.contains(screenPoint) == true }),
+              var frame = window.window?.frame else { return }
+        frame.origin = NSPoint(x: screenPoint.x, y: screenPoint.y - frame.height)
+        let detached = makeWindow(frame: frame)
+        // Cleanup on the source change must still find the moved terminals.
+        detached.adopt(workspace)
+        window.store.remove(workspace)
+        detached.show()
+        NSApp.activate()
+        if window.store.workspaces.isEmpty {
+            window.window?.close()
+        }
+    }
+
     func terminalWindowWillClose(_ window: TerminalWindow) {
         windows.removeAll { $0 === window }
         if windows.isEmpty {

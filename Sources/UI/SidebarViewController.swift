@@ -7,6 +7,7 @@ protocol SidebarViewControllerDelegate: AnyObject {
     func sidebar(_ sidebar: SidebarViewController, didFinishRenaming workspace: Workspace, to name: String?)
     func sidebar(_ sidebar: SidebarViewController, didFinishRenaming tab: TerminalTab, to name: String?)
     func sidebar(_ sidebar: SidebarViewController, wantsClose workspace: Workspace)
+    func sidebar(_ sidebar: SidebarViewController, wantsDetach workspace: Workspace, at screenPoint: NSPoint)
     func sidebar(_ sidebar: SidebarViewController, wantsClose tab: TerminalTab, in workspace: Workspace)
     func sidebar(_ sidebar: SidebarViewController, wantsNewTabIn workspace: Workspace)
     func sidebarWantsNewTerminal(_ sidebar: SidebarViewController)
@@ -418,9 +419,14 @@ final class SidebarViewController: NSViewController, NSTableViewDataSource, NSTa
 
     func tableView(_ tableView: NSTableView, draggingSession session: NSDraggingSession,
                    endedAt screenPoint: NSPoint, operation: NSDragOperation) {
+        let workspace = draggingWorkspace
         draggingWorkspace = nil
         draggingTab = nil
         self.tableView.refreshPointer(at: screenPoint)
+        guard operation.isEmpty, let workspace,
+              store.workspaces.contains(where: { $0 === workspace }),
+              let window = view.window, !window.frame.contains(screenPoint) else { return }
+        delegate?.sidebar(self, wantsDetach: workspace, at: screenPoint)
     }
 
     // MARK: NSTableViewDelegate

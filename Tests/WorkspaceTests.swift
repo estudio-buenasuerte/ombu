@@ -398,6 +398,83 @@ final class WorkspaceTests: XCTestCase {
         XCTAssertTrue(store.selected === fourth)
     }
 
+    func testAdoptingWorkspaceAppendsAndSelectsItWithTabsAndPanesIntact() {
+        let store = TestStore()
+        let existing = store.addWorkspace()
+        let workspace = WorkspaceModel<FakeLeaf>(customName: "Moving")
+        let first = FakeLeaf("first"), focused = FakeLeaf("focused")
+        let tab = TestTab(leaf: first)
+        tab.panes.split(first, direction: .right, with: focused)
+        tab.focus(focused)
+        tab.panes.toggleZoom(focused)
+        let other = TestTab(leaf: FakeLeaf("other"))
+        workspace.add(tab)
+        workspace.add(other)
+        workspace.select(tab)
+        var changes = 0
+        store.onChange = {
+            changes += 1
+            XCTAssertEqual(store.workspaces.map(\.id), [existing.id, workspace.id])
+            XCTAssertTrue(store.selected === workspace)
+            XCTAssertTrue(workspace.selectedTab === tab)
+        }
+
+        store.adopt(workspace)
+
+        XCTAssertEqual(changes, 1)
+        XCTAssertTrue(store.workspaces.last === workspace)
+        XCTAssertEqual(workspace.name, "Moving")
+        XCTAssertTrue(workspace.tabs[0] === tab)
+        XCTAssertTrue(workspace.tabs[1] === other)
+        XCTAssertTrue(tab.focusedLeaf === focused)
+        XCTAssertTrue(tab.panes.zoomed === focused)
+        XCTAssertTrue(tab.panes.leaves[0] === first)
+        XCTAssertTrue(tab.panes.leaves[1] === focused)
+    }
+
+    func testAdoptingBeforeRemovingKeepsTerminalsInDestinationDuringSourceChange() {
+        let source = TestStore()
+        let remaining = source.addWorkspace()
+        let workspace = source.addWorkspace()
+        let leaf = FakeLeaf()
+        let tab = TestTab(leaf: leaf)
+        workspace.add(tab)
+        let destination = TestStore()
+        var changes = 0
+        source.onChange = {
+            changes += 1
+            XCTAssertEqual(source.workspaces.map(\.id), [remaining.id])
+            XCTAssertTrue(source.selected === remaining)
+            XCTAssertNil(source.workspace(containing: leaf))
+            XCTAssertTrue(destination.workspace(containing: leaf)?.0 === workspace)
+            XCTAssertTrue(destination.workspace(containing: leaf)?.1 === tab)
+        }
+
+        destination.adopt(workspace)
+        source.remove(workspace)
+
+        XCTAssertEqual(changes, 1)
+        XCTAssertTrue(destination.selected === workspace)
+        XCTAssertTrue(workspace.selectedTab === tab)
+    }
+
+    func testMovingOnlyWorkspaceToAnotherStoreLeavesSourceEmpty() {
+        let source = TestStore()
+        let workspace = source.addWorkspace()
+        let tab = TestTab(leaf: FakeLeaf())
+        workspace.add(tab)
+        let destination = TestStore()
+
+        destination.adopt(workspace)
+        source.remove(workspace)
+
+        XCTAssertTrue(source.workspaces.isEmpty)
+        XCTAssertNil(source.selected)
+        XCTAssertTrue(destination.workspaces.first === workspace)
+        XCTAssertTrue(destination.selected === workspace)
+        XCTAssertTrue(workspace.selectedTab === tab)
+    }
+
     func testStoreRemovalSelection() {
         let store = TestStore()
         let first = store.addWorkspace()

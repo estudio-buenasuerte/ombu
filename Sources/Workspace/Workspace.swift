@@ -181,6 +181,12 @@ final class WorkspaceStoreModel<Leaf: PaneLeaf> {
         return workspace
     }
 
+    func adopt(_ workspace: WorkspaceModel<Leaf>) {
+        workspaces.append(workspace)
+        selected = workspace
+        notifyChanged()
+    }
+
     func remove(_ workspace: WorkspaceModel<Leaf>) {
         guard let index = workspaces.firstIndex(where: { $0 === workspace }) else { return }
         workspaces.remove(at: index)

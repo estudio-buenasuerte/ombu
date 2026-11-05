@@ -3,6 +3,7 @@ import GhosttyKit
 
 protocol TerminalWindowDelegate: AnyObject {
     func terminalWindow(_ window: TerminalWindow, makeSurface id: UUID, in directory: String?, workspace: UUID, startImmediately: Bool) -> TerminalSurfaceView
+    func terminalWindow(_ window: TerminalWindow, detach workspace: Workspace, at screenPoint: NSPoint)
     func terminalWindowDidChange(_ window: TerminalWindow)
     func terminalWindowWillClose(_ window: TerminalWindow)
 }
@@ -78,6 +79,10 @@ final class TerminalWindow: NSObject, NSWindowDelegate {
     }
 
     // MARK: Workspaces and tabs
+
+    func adopt(_ workspace: Workspace) {
+        store.adopt(workspace)
+    }
 
     /// Without a directory the workspace starts where the shell's own default is.
     func newWorkspace(in directory: String? = nil) {
@@ -523,5 +528,9 @@ extension TerminalWindow: SidebarViewControllerDelegate {
 
     func sidebar(_ sidebar: SidebarViewController, wantsClose workspace: Workspace) {
         close(workspace)
+    }
+
+    func sidebar(_ sidebar: SidebarViewController, wantsDetach workspace: Workspace, at screenPoint: NSPoint) {
+        delegate?.terminalWindow(self, detach: workspace, at: screenPoint)
     }
 }
