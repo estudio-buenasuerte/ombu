@@ -62,8 +62,6 @@ final class MainWindowController: NSWindowController {
         // there to bring the sidebar back once it is collapsed.
         sidebarAccessory.view = Self.accessoryRow([
             titlebarButton(symbol: "sidebar.left", description: "Toggle sidebar", action: #selector(toggleWorkspaceSidebar)),
-            titlebarButton(symbol: "plus", description: "New workspace", action: #selector(newWorkspaceTapped)),
-            titlebarButton(symbol: "questionmark.circle", description: "Help", action: #selector(showHelpMenu(_:))),
         ])
         sidebarAccessory.layoutAttribute = .leading
         window.addTitlebarAccessoryViewController(sidebarAccessory)
@@ -199,17 +197,6 @@ final class MainWindowController: NSWindowController {
 
     @objc func toggleWorkspaceSidebar(_ sender: Any?) {
         content.toggleSidebar()
-    }
-
-    /// Opens just below the button.
-    @objc private func showHelpMenu(_ sender: NSButton) {
-        let menu = NSMenu()
-        menu.addItem(withTitle: "Keyboard Shortcuts", action: #selector(AppDelegate.showKeyboardShortcuts(_:)), keyEquivalent: "")
-        menu.popUp(positioning: nil, at: NSPoint(x: sender.frame.minX, y: sender.frame.minY - 4), in: sender.superview)
-    }
-
-    @objc private func newWorkspaceTapped() {
-        onNewWorkspace?()
     }
 
     @objc private func resetZoomTapped() {
