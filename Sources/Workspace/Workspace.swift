@@ -132,6 +132,17 @@ final class WorkspaceModel<Leaf: PaneLeaf> {
         selectedTab = tab
     }
 
+    @discardableResult
+    func move(_ tab: TabModel<Leaf>, toInsertionIndex index: Int) -> Bool {
+        guard (0...tabs.count).contains(index),
+              let source = tabs.firstIndex(where: { $0 === tab }) else { return false }
+        let destination = index > source ? index - 1 : index
+        guard source != destination else { return true }
+        tabs.remove(at: source)
+        tabs.insert(tab, at: destination)
+        return true
+    }
+
     func tabs(closing mode: TabCloseMode, from tab: TabModel<Leaf>) -> [TabModel<Leaf>] {
         guard let index = tabs.firstIndex(where: { $0 === tab }) else { return [] }
         switch mode {

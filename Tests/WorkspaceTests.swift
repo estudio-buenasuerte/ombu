@@ -41,6 +41,83 @@ final class WorkspaceTests: XCTestCase {
         XCTAssertTrue(workspace.selectedTab === tabs[0])
     }
 
+    func testMovingTabsPreservesSelection() {
+        let workspace = WorkspaceModel<FakeLeaf>()
+        let tabs = (0..<4).map { _ in TestTab(leaf: FakeLeaf()) }
+        tabs.forEach(workspace.add)
+        workspace.select(tabs[1])
+
+        XCTAssertTrue(workspace.move(tabs[1], toInsertionIndex: 4))
+        XCTAssertEqual(workspace.tabs.map(\.id), [tabs[0], tabs[2], tabs[3], tabs[1]].map(\.id))
+        XCTAssertTrue(workspace.selectedTab === tabs[1])
+
+        XCTAssertTrue(workspace.move(tabs[3], toInsertionIndex: 0))
+        XCTAssertEqual(workspace.tabs.map(\.id), [tabs[3], tabs[0], tabs[2], tabs[1]].map(\.id))
+        XCTAssertTrue(workspace.selectedTab === tabs[1])
+
+        XCTAssertTrue(workspace.move(tabs[0], toInsertionIndex: 3))
+        XCTAssertEqual(workspace.tabs.map(\.id), [tabs[3], tabs[2], tabs[0], tabs[1]].map(\.id))
+        XCTAssertTrue(workspace.selectedTab === tabs[1])
+    }
+
+    func testInvalidAndUnchangedTabMovesKeepOrderAndSelection() {
+        let workspace = WorkspaceModel<FakeLeaf>()
+        let first = TestTab(leaf: FakeLeaf())
+        let second = TestTab(leaf: FakeLeaf())
+        workspace.add(first)
+        workspace.add(second)
+
+        XCTAssertTrue(workspace.move(first, toInsertionIndex: 0))
+        XCTAssertTrue(workspace.move(first, toInsertionIndex: 1))
+        XCTAssertTrue(workspace.move(second, toInsertionIndex: 2))
+        XCTAssertFalse(workspace.move(first, toInsertionIndex: -1))
+        XCTAssertFalse(workspace.move(first, toInsertionIndex: 3))
+        let other = WorkspaceModel<FakeLeaf>()
+        let foreign = TestTab(leaf: FakeLeaf())
+        other.add(foreign)
+        XCTAssertFalse(workspace.move(foreign, toInsertionIndex: 0))
+        XCTAssertEqual(workspace.tabs.map(\.id), [first.id, second.id])
+        XCTAssertTrue(workspace.selectedTab === second)
+        XCTAssertEqual(other.tabs.map(\.id), [foreign.id])
+
+        workspace.remove(first)
+        XCTAssertFalse(workspace.move(first, toInsertionIndex: 0))
+        XCTAssertTrue(workspace.move(second, toInsertionIndex: 0))
+        XCTAssertTrue(workspace.move(second, toInsertionIndex: 1))
+        XCTAssertEqual(workspace.tabs.map(\.id), [second.id])
+        XCTAssertTrue(workspace.selectedTab === second)
+
+        workspace.remove(second)
+        XCTAssertFalse(workspace.move(second, toInsertionIndex: 0))
+        XCTAssertTrue(workspace.tabs.isEmpty)
+        XCTAssertNil(workspace.selectedTab)
+    }
+
+    func testReorderedTabsRestoreFromFileWithSelectionAndContents() throws {
+        let store = TestStore()
+        let workspace = store.addWorkspace()
+        let tabs = ["first", "second", "third"].map { TestTab(leaf: FakeLeaf(workingDirectory: "/" + $0)) }
+        tabs.forEach(workspace.add)
+        workspace.select(tabs[0])
+        XCTAssertTrue(workspace.move(tabs[0], toInsertionIndex: 3))
+        XCTAssertTrue(workspace.move(tabs[2], toInsertionIndex: 0))
+        let expected = store.snapshot()
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("session.json")
+        XCTAssertTrue(Session(windows: [expected]).save(to: url))
+
+        let loaded = try XCTUnwrap(Session.load(from: url))
+        let restored = TestStore()
+        restored.restore(loaded.windows[0]) { id, directory, _ in
+            FakeLeaf(id: id, workingDirectory: directory)
+        }
+        let restoredWorkspace = try XCTUnwrap(restored.selected)
+        XCTAssertEqual(restoredWorkspace.tabs.map(\.focusedLeaf.id), [tabs[2], tabs[1], tabs[0]].map(\.focusedLeaf.id))
+        XCTAssertEqual(restoredWorkspace.selectedTab?.focusedLeaf.id, tabs[0].focusedLeaf.id)
+        XCTAssertEqual(restored.snapshot(), expected)
+    }
+
     func testRemovingBackgroundPaneKeepsFocus() {
         let a = FakeLeaf("a"), b = FakeLeaf("b"), c = FakeLeaf("c")
         let tab = TestTab(leaf: a)

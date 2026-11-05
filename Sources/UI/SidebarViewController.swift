@@ -58,7 +58,9 @@ final class SidebarViewController: NSViewController, NSTableViewDataSource, NSTa
     private let tableView = WorkspaceTableView()
     private let scrollView = NSScrollView()
     private static let workspacePasteboardType = NSPasteboard.PasteboardType("com.buenasuerte.ombu.workspace")
+    private static let tabPasteboardType = NSPasteboard.PasteboardType("com.buenasuerte.ombu.tab")
     private var draggingWorkspace: Workspace?
+    private var draggingTab: (workspace: Workspace, tab: TerminalTab)?
     private var isReloading = false
     private var hoveredRow = -1
     private let git = GitStatusMonitor()
@@ -88,7 +90,7 @@ final class SidebarViewController: NSViewController, NSTableViewDataSource, NSTa
         tableView.allowsEmptySelection = true
         tableView.target = self
         tableView.action = #selector(selectClickedRow)
-        tableView.registerForDraggedTypes([Self.workspacePasteboardType])
+        tableView.registerForDraggedTypes([Self.workspacePasteboardType, Self.tabPasteboardType])
         tableView.setDraggingSourceOperationMask(.move, forLocal: true)
         tableView.setDraggingSourceOperationMask([], forLocal: false)
         git.onUpdate = { [weak self] in self?.reloadRows() }
@@ -304,23 +306,45 @@ final class SidebarViewController: NSViewController, NSTableViewDataSource, NSTa
         rows.count
     }
 
-    /// Only workspaces are dragged, to reorder them.
     func tableView(_ tableView: NSTableView, pasteboardWriterForRow row: Int) -> NSPasteboardWriting? {
-        guard self.row(at: row)?.isWorkspace == true else { return nil }
         let item = NSPasteboardItem()
-        item.setData(Data(), forType: Self.workspacePasteboardType)
+        switch self.row(at: row) {
+        case .workspace:
+            item.setData(Data(), forType: Self.workspacePasteboardType)
+        case .tab:
+            item.setData(Data(), forType: Self.tabPasteboardType)
+        case .newTerminal, nil:
+            return nil
+        }
         return item
     }
 
     func tableView(_ tableView: NSTableView, draggingSession session: NSDraggingSession,
                    willBeginAt screenPoint: NSPoint, forRowIndexes rowIndexes: IndexSet) {
-        draggingWorkspace = rowIndexes.first.flatMap { row(at: $0)?.workspace }
+        draggingWorkspace = nil
+        draggingTab = nil
+        switch rowIndexes.first.flatMap({ row(at: $0) }) {
+        case .workspace(let workspace):
+            draggingWorkspace = workspace
+        case .tab(let workspace, let tab):
+            draggingTab = (workspace, tab)
+        case .newTerminal, nil:
+            break
+        }
     }
 
     private func draggedWorkspace(_ info: NSDraggingInfo) -> Workspace? {
         guard let source = info.draggingSource as? NSTableView, source === tableView,
               let draggingWorkspace, store.workspaces.contains(where: { $0 === draggingWorkspace }) else { return nil }
         return draggingWorkspace
+    }
+
+    private func draggedTab(_ info: NSDraggingInfo) -> (workspace: Workspace, tab: TerminalTab)? {
+        guard let source = info.draggingSource as? NSTableView, source === tableView,
+              let draggingTab,
+              store.workspaces.contains(where: { $0 === draggingTab.workspace }),
+              draggingTab.workspace.tabs.contains(where: { $0 === draggingTab.tab }) else { return nil }
+        return draggingTab
     }
 
     /// Where among the workspaces a drop above a row lands: after every
@@ -339,13 +363,21 @@ final class SidebarViewController: NSViewController, NSTableViewDataSource, NSTa
 
     func tableView(_ tableView: NSTableView, validateDrop info: NSDraggingInfo,
                    proposedRow row: Int, proposedDropOperation dropOperation: NSTableView.DropOperation) -> NSDragOperation {
-        guard draggedWorkspace(info) != nil, (0...rows.count).contains(row) else { return [] }
+        guard (0...rows.count).contains(row) else { return [] }
         var above = row
         if dropOperation == .on {
             guard rows.indices.contains(row) else { return [] }
             let pointer = tableView.convert(info.draggingLocation, from: nil)
             above = insertionIndex(forDropOn: row, pointerY: pointer.y, rowRect: tableView.rect(ofRow: row))
         }
+        if let (workspace, _) = draggedTab(info), let workspaceRow = self.row(of: workspace) {
+            let firstTabRow = workspaceRow + 1
+            // A tab stays in its workspace even when the pointer leaves it.
+            above = min(max(above, firstTabRow), firstTabRow + workspace.tabs.count)
+            tableView.setDropRow(above, dropOperation: .above)
+            return .move
+        }
+        guard draggedWorkspace(info) != nil else { return [] }
         // Dropping a row back where it is stays allowed, as in Finder, and
         // leaves the order alone.
         tableView.setDropRow(tableRow(forWorkspaceInsertionIndex: workspaceInsertionIndex(forRow: above)), dropOperation: .above)
@@ -354,13 +386,20 @@ final class SidebarViewController: NSViewController, NSTableViewDataSource, NSTa
 
     func tableView(_ tableView: NSTableView, acceptDrop info: NSDraggingInfo,
                    row: Int, dropOperation: NSTableView.DropOperation) -> Bool {
-        guard dropOperation == .above, let workspace = draggedWorkspace(info) else { return false }
+        guard dropOperation == .above else { return false }
+        if let (workspace, tab) = draggedTab(info), let workspaceRow = self.row(of: workspace) {
+            guard workspace.move(tab, toInsertionIndex: row - workspaceRow - 1) else { return false }
+            store.notifyChanged()
+            return true
+        }
+        guard let workspace = draggedWorkspace(info) else { return false }
         return store.move(workspace, toInsertionIndex: workspaceInsertionIndex(forRow: row))
     }
 
     func tableView(_ tableView: NSTableView, draggingSession session: NSDraggingSession,
                    endedAt screenPoint: NSPoint, operation: NSDragOperation) {
         draggingWorkspace = nil
+        draggingTab = nil
         self.tableView.refreshPointer(at: screenPoint)
     }
 
