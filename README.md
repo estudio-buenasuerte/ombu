@@ -1,43 +1,41 @@
 <div align="center">
-  <img src="docs/icon.png" width="128" alt="Enso icon" />
-  <h1>Enso</h1>
-  <p><strong>The terminal that keeps itself organized.</strong></p>
+  <img src="docs/icon.png" width="128" alt="Ombú icon" />
+  <h1>Ombú</h1>
+  <p><strong>A personal macOS terminal for working alongside coding agents.</strong></p>
   <p>
     <img src="https://img.shields.io/badge/platform-macOS-6fa8ff" alt="macOS" />
     <img src="https://img.shields.io/badge/built%20on-libghostty-ff7eb6" alt="libghostty" />
-    <img src="https://img.shields.io/github/v/release/amanfromsolan/enso?color=ffb454&label=release" alt="latest release" />
+    <img src="https://img.shields.io/badge/license-GPL--3.0-ffb454" alt="GPL-3.0" />
   </p>
 </div>
 
-Enso is a native macOS terminal. Tabs show what's actually running in them, with names and icons instead of `zsh · 80×24`. Workspaces keep projects apart, the command palette finds everything, and it's all GPU-fast thanks to [libghostty](https://github.com/ghostty-org/ghostty). If you run AI coding agents all day, Enso is especially good at that.
+Ombú is the terminal I wanted for my own days: several projects open at once, a Claude or Codex session running in most of them, and a sidebar that tells me at a glance which one needs me. It is native, GPU-fast thanks to [libghostty](https://github.com/ghostty-org/ghostty), and shaped around one person's workflow rather than everyone's.
 
-![Enso screenshot](docs/screenshot.png)
+## Where it comes from
 
-## Download
+Ombú stands on two terminals I admire.
 
-**[⬇ Download Enso.dmg](https://github.com/amanfromsolan/enso/releases/latest)** — signed & notarized, no security prompts. Drag to Applications, open, done.
+[**Flow**](https://getflowterm.app) by [thetinygoat](https://github.com/thetinygoat/flow) showed me how good a terminal feels when each project is a workspace with its own tabs, and when a small coloured dot can carry the whole state of an agent: working, waiting for you, done. Ombú's first incarnation was a fork of Flow, and that era lives on in the [`appkit`](../../tree/appkit) branch.
 
-> ⚠️ Enso is pre-1.0 — expect breaking changes between releases.
+[**Enso**](https://github.com/amanfromsolan/enso) by [Aman](https://github.com/amanfromsolan) then arrived with the sidebar, spaces, splits, command palette and agent-aware tabs that I kept wishing Flow had, built in SwiftUI with real care. Rather than rebuild all of that, Ombú became a fork of Enso's `next` branch and carries Flow's ideas on top of it.
 
-## Highlights
+So Ombú is, honestly, a merge: Enso's look, feel and feature set, Flow's way of seeing projects and agents, and a few choices of my own. If you want a terminal that is maintained for a wide audience, use Enso. If you want to see what one person does with it, read on.
 
-- **🪷 Spaces:** swipeable workspaces in the sidebar, each with its own tabs and folders. Swipe past the last one to create a new one.
+## What Ombú adds
 
-- **🕵️ Icons for what's running:** Claude, Codex, Gemini, and Ollama show their real logos; vim, ssh, git, and docker get glyphs; idle shells show a default terminal icon.
+- **🌳 Workspaces that report back.** A folder in the sidebar is a project. Its row carries one dot for every tab inside it: blue and pulsing while an agent is responding, yellow when one is waiting for your input, green when one finished while you were elsewhere, and nothing at all when the project is quiet.
 
-- **⌘D Splits:** put two terminals side by side or stacked, drag the gap to resize, and reach split and close from the controls in each pane's header. The pane you're typing in takes a ring while the others dim.
+- **🏷 Named after the repository.** New workspaces take the name of the git repository they live in, or the directory when there is none, instead of "Folder 3". Rename them whenever you like; a name you chose is never overwritten.
 
-- **🔁 Tabs that survive a restart:** tabs running Claude or Codex pick up right where they left off after a relaunch.
+- **🎨 An icon per workspace.** Each workspace shows a symbol or emoji from Enso's icon catalogue, with a stable default until you pick one from the row's context menu.
 
-- **🌙 Sleep a tab, keep the conversation:** park a pinned tab's shell to free the RAM, and wake it later with your Claude or Codex conversation intact.
+- **🌿 The branch, right there.** A quiet second line under the workspace name shows the checked-out branch and a dot when the tree is dirty, kept fresh by a file watcher rather than polling.
 
-- **⌘T Command palette:** every tab, space, and command in one search. Jump with `⌘1–9`, rename inline, duplicate, close others, open in Finder.
+- **🅰 ABC Diatype.** The chrome is set in Diatype when it is installed, and falls back to the system font when it is not. The terminal itself keeps whatever your Ghostty config says.
 
-- **⌃Tab switcher:** flip through your recent tabs with a live preview, like the app switcher but for terminals.
+- **No updater.** Builds come from this repo. Enso's release channel stays Enso's.
 
-- **🌗 Feels like a Mac app:** native SwiftUI chrome that follows your system's light or dark look, while the terminal keeps your Ghostty theme.
-
-- **📌 A sidebar that never rots:** pin tabs to keep them forever, group them into folders that nest as deep as you like, double-click to rename. Unpinned tabs quietly expire after 24 hours.
+Everything else is Enso, kept as close to upstream as possible: spaces, splits, the command palette, the ⌃Tab switcher, tabs that survive a relaunch, and sleeping a tab without losing its conversation. Enso's own [README](https://github.com/amanfromsolan/enso#readme) describes them better than I could.
 
 ## Keyboard
 
@@ -55,21 +53,25 @@ Enso is a native macOS terminal. Tabs show what's actually running in them, with
 
 ## Build from source
 
-Enso embeds [Ghostty](https://github.com/ghostty-org/ghostty)'s `GhosttyKit.xcframework`, which isn't vendored in this repo:
+Ghostty is vendored as a submodule and built once into a framework; after that it is a normal Xcode build. You need Xcode, Zig 0.16 or newer, and a development signing identity of your own (the project's team and bundle identifiers are mine).
 
 ```sh
-git clone https://github.com/ghostty-org/ghostty references/ghostty
-cd references/ghostty && zig build -Doptimize=ReleaseFast -Demit-macos-app=false   # needs zig 0.16+
-cd ../.. && ln -s ../references/ghostty/macos/GhosttyKit.xcframework macos/GhosttyKit.xcframework
-xcodebuild -project macos/Enso.xcodeproj -scheme Enso build
+git clone --recurse-submodules https://github.com/estudio-buenasuerte/ombu
+cd ombu
+./scripts/build-ghosttykit.sh      # once per Ghostty bump
+xcodebuild -project macos/Enso.xcodeproj -scheme Enso -configuration Release build
 ```
 
-`script/release.sh` cuts a signed, notarized DMG (needs a Developer ID certificate and a `notarytool` keychain profile).
+The product is called `Ombu` on disk and `Ombú` everywhere you can read it. The Debug configuration builds a separate `Ombú Dev` with its own support folder, so a work-in-progress build never touches the one you rely on.
+
+## Keeping up with upstream
+
+Ombú takes Enso releases by merging their tags, never by rebasing, and bumps Ghostty by moving the submodule. `UPSTREAM.md` records the versions it is on and the exact steps. A weekly check files an issue when either project has moved.
 
 ## Credits
 
-Terminal core by [Ghostty](https://ghostty.org). Icon design by [Shubhang Rajput](https://www.shubhangrajput.com).
+Terminal core by [Ghostty](https://ghostty.org). Almost everything you can see is [Enso](https://github.com/amanfromsolan/enso), by Aman. The ideas about projects and agents are [Flow](https://getflowterm.app)'s, by thetinygoat. The icon is set in [ABC Diatype Mono](https://abcdinamo.com/typefaces/diatype) by Dinamo; the typeface itself is not included.
 
 ## License
 
-Enso is open source under the [GNU General Public License v3.0](LICENSE). Ghostty (MIT) and other bundled components retain their original licenses.
+Ombú is open source under the [GNU General Public License v3.0](LICENSE), as Enso is. Ghostty (MIT) and other bundled components keep their original licenses. The `appkit` branch descends from Flow, which is MIT.
