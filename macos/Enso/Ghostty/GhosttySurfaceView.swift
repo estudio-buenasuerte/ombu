@@ -1,6 +1,7 @@
 import AppKit
 import Combine
 import GhosttyKit
+import UniformTypeIdentifiers
 
 /// The NSView a libghostty surface renders into. libghostty owns the PTY,
 /// the shell process, and the Metal rendering; this view feeds it input,
@@ -317,6 +318,12 @@ final class GhosttySurfaceView: NSView, NSTextInputClient {
             return
         }
 
+        if event.keyCode == 0x09,
+           event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command,
+           pasteImageIfPresent() {
+            return
+        }
+
         // Round-trip through NSTextInputClient so dead keys, IME, and
         // modifier translation behave like a native text view.
         keyTextAccumulator = []
@@ -325,7 +332,7 @@ final class GhosttySurfaceView: NSView, NSTextInputClient {
 
         if let texts = keyTextAccumulator, !texts.isEmpty {
             for text in texts {
-                sendKey(action: GHOSTTY_ACTION_PRESS, event: event, text: text)
+                sendKey(action: GHOSTTY_ACTION_PRESS, event: event, text: nil)
             }
         } else {
             sendKey(action: GHOSTTY_ACTION_PRESS, event: event, text: nil)
@@ -408,7 +415,48 @@ final class GhosttySurfaceView: NSView, NSTextInputClient {
     }
 
     @objc func paste(_ sender: Any?) {
+        if pasteImageIfPresent() { return }
         performBinding("paste_from_clipboard")
+    }
+
+    /// Text takes priority because clipboard images may carry a text representation too.
+    static func pasteboardHoldsImageOnly(_ pasteboard: NSPasteboard) -> Bool {
+        guard pasteboard.string(forType: .string) == nil else { return false }
+        if pasteboard.canReadItem(withDataConformingToTypes: [UTType.image.identifier]) {
+            return true
+        }
+        guard let urls = pasteboard.readObjects(forClasses: [NSURL.self]) as? [URL] else {
+            return false
+        }
+        let imageExtensions = ["png", "jpg", "jpeg", "gif", "webp", "heic", "heif", "tif", "tiff", "bmp"]
+        return urls.contains { $0.isFileURL && imageExtensions.contains($0.pathExtension.lowercased()) }
+    }
+
+    /// Agents read clipboard images themselves on Ctrl+V; the key encoder
+    /// preserves the running program's negotiated keyboard protocol.
+    private func pasteImageIfPresent() -> Bool {
+        guard let surface, Self.pasteboardHoldsImageOnly(.general) else { return false }
+        let text = "\u{16}"
+        guard let event = NSEvent.keyEvent(
+            with: .keyDown,
+            location: .zero,
+            modifierFlags: .control,
+            timestamp: ProcessInfo.processInfo.systemUptime,
+            windowNumber: window?.windowNumber ?? 0,
+            context: nil,
+            characters: text,
+            charactersIgnoringModifiers: "v",
+            isARepeat: false,
+            keyCode: 0x09
+        ) else {
+            text.withCString { ptr in
+                ghostty_surface_text(surface, ptr, UInt(text.utf8.count))
+            }
+            return true
+        }
+        sendKey(action: GHOSTTY_ACTION_PRESS, event: event, text: text)
+        sendKey(action: GHOSTTY_ACTION_RELEASE, event: event, text: nil)
+        return true
     }
 
     override func selectAll(_ sender: Any?) {
