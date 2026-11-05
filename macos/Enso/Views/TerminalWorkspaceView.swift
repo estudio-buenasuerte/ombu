@@ -94,10 +94,10 @@ private struct SleepingTabCard: View {
                 .padding(.bottom, 6)
 
             Text("This tab is sleeping")
-                .font(.title3.weight(.semibold))
+                .font(Font.custom("ABC Diatype", size: NSFont.preferredFont(forTextStyle: .title3).pointSize).weight(.semibold))
 
             Text(summary)
-                .font(.system(size: 13))
+                .font(PaletteFont.primary())
                 // Sentence-length copy that wraps: 1.6 line height
                 // (13 pt type + 0.6× spacing) gives the lines air.
                 .lineSpacing(13 * 0.6)
@@ -106,7 +106,7 @@ private struct SleepingTabCard: View {
                 .frame(maxWidth: 420)
 
             Text("Click anywhere to wake")
-                .font(.system(size: 11))
+                .font(Font.custom("ABC Diatype", size: 11))
                 .foregroundStyle(.tertiary)
                 .padding(.top, 10)
         }

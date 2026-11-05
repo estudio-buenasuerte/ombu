@@ -2515,12 +2515,12 @@ struct SpaceEditorSheet: View {
                 .padding(.bottom, 14)
 
             Text(isCreating ? "Create a Space" : "Edit Space")
-                .font(.system(size: 17, weight: .semibold))
+                .font(Font.custom("ABC Diatype", size: 17).weight(.semibold))
                 .padding(.bottom, 14)
 
             TextField("Name your space", text: $name)
                 .textFieldStyle(.plain)
-                .font(.system(size: 13.5))
+                .font(Font.custom("ABC Diatype", size: 13.5))
                 .focused($nameFocused)
                 .padding(.vertical, 10)
                 .padding(.horizontal, 12)
@@ -2767,7 +2767,7 @@ struct SpaceEditorSheet: View {
             pickerTab = tab
         } label: {
             Text(title)
-                .font(.system(size: 12, weight: .medium))
+                .font(PaletteFont.secondary(.medium))
                 .foregroundStyle(Theme.text(selected ? 0.92 : 0.5))
                 .padding(.vertical, 5)
                 .padding(.horizontal, 12)
@@ -2788,7 +2788,7 @@ struct SpaceEditorSheet: View {
                 .foregroundStyle(Theme.text(0.35))
             TextField(prompt, text: text)
                 .textFieldStyle(.plain)
-                .font(.system(size: 12.5))
+                .font(Font.custom("ABC Diatype", size: 12.5))
             if !text.wrappedValue.isEmpty {
                 Button {
                     text.wrappedValue = ""
@@ -3073,7 +3073,7 @@ struct ModalPrimaryButtonStyle: ButtonStyle {
 
         var body: some View {
             configuration.label
-                .font(.system(size: 13, weight: .semibold))
+                .font(PaletteFont.primary(.semibold))
                 .foregroundStyle(accent == nil ? Theme.inverseInk.opacity(0.88) : Color.white.opacity(0.95))
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 9)
@@ -3100,7 +3100,7 @@ struct ModalSecondaryButtonStyle: ButtonStyle {
 
         var body: some View {
             configuration.label
-                .font(.system(size: 13, weight: .medium))
+                .font(PaletteFont.primary(.medium))
                 .foregroundStyle(Theme.text(hovering ? 0.92 : 0.8))
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 9)

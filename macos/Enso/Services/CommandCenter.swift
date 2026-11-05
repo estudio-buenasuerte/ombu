@@ -1139,38 +1139,31 @@ struct PaletteRowView: View {
     }
 }
 
-/// System font (SF Pro) for palette and chrome typography. The system face
-/// is a real variable font: weights track the wght axis and Text/Display
-/// optical sizing follows point size automatically, so both helpers resolve
-/// the same way — they remain distinct only to keep call sites semantic.
-/// (Bundled SF Compact was dropped: weight selection is inert for
-/// ATS-registered variable fonts and rendered the Black default instance on
-/// machines without Apple's dev font pack.)
+/// The chrome shares the terminal's type family for a consistent voice.
 enum PaletteFont {
-    /// Gentle letterspacing across chrome text, on top of SF's own
-    /// size-dependent tracking.
+    /// Gentle letterspacing keeps chrome text airy.
     static let tracking: CGFloat = 0.25
 
     /// The chrome's whole type scale; hierarchy within it comes from weight and
     /// ink. Sidebar row titles and names.
     static func primary(_ weight: Font.Weight = .regular) -> Font {
-        .system(size: 13, weight: weight)
+        Font.custom("ABC Diatype", size: 13).weight(weight)
     }
 
     /// Row titles in the Command Center and the tab switcher, which float over
     /// the terminal and read a step larger than the sidebar.
     static func paletteRow(_ weight: Font.Weight = .regular) -> Font {
-        .system(size: 14, weight: weight)
+        Font.custom("ABC Diatype", size: 14).weight(weight)
     }
 
     /// Row context, section headers and hints.
     static func secondary(_ weight: Font.Weight = .regular) -> Font {
-        .system(size: 12, weight: weight)
+        Font.custom("ABC Diatype", size: 12).weight(weight)
     }
 
     /// The Command Center's search field.
     static func input(_ weight: Font.Weight = .regular) -> Font {
-        .system(size: 16, weight: weight)
+        Font.custom("ABC Diatype", size: 16).weight(weight)
     }
 }
 
