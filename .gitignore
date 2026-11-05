@@ -7,3 +7,11 @@ references/
 GhosttyKit.xcframework
 default.profraw
 internal-docs/
+
+# Ombú
+/Vendor/GhosttyKit.xcframework/
+/Vendor/GhosttyKit.stamp
+/Vendor/GhosttyResources/
+/.route/
+.DS_Store
+/ombu.xcodeproj/
