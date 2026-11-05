@@ -12,9 +12,14 @@ final class CommandCenterView: NSView, NSTextFieldDelegate, NSTableViewDataSourc
         case entry(CommandCenter.Entry)
     }
 
-    private static let entryHeight: CGFloat = 44
-    private static let headerHeight: CGFloat = 34
-    private static let maximumListHeight: CGFloat = 480
+    private static let entryHeight: CGFloat = 46
+    private static let headerHeight: CGFloat = 36
+    private static let maximumListHeight: CGFloat = 440
+    /// The width of the sidebar, so the panel centres on the terminal column.
+    var columnInset: CGFloat = 0 {
+        didSet { centering?.constant = columnInset / 2 }
+    }
+    private var centering: NSLayoutConstraint?
 
     private let entries: [CommandCenter.Entry]
     private var rows: [Row] = []
@@ -34,7 +39,8 @@ final class CommandCenterView: NSView, NSTextFieldDelegate, NSTableViewDataSourc
         field.isBordered = false
         field.drawsBackground = false
         field.focusRingType = .none
-        field.font = .systemFont(ofSize: 20)
+        field.font = .systemFont(ofSize: 18)
+        field.textColor = Theme.text(0.92)
         field.delegate = self
         field.cell?.isScrollable = true
         field.cell?.wraps = false
@@ -61,8 +67,8 @@ final class CommandCenterView: NSView, NSTextFieldDelegate, NSTableViewDataSourc
         scrollView.contentInsets = NSEdgeInsets(top: 4, left: 0, bottom: 12, right: 0)
 
         let searchIcon = NSImageView(image: NSImage(systemSymbolName: "magnifyingglass", accessibilityDescription: nil)!)
-        searchIcon.symbolConfiguration = .init(pointSize: 18, weight: .regular)
-        searchIcon.contentTintColor = .secondaryLabelColor
+        searchIcon.symbolConfiguration = .init(pointSize: 17, weight: .regular)
+        searchIcon.contentTintColor = Theme.text(0.4)
         let divider = HairlineView()
         message.font = .systemFont(ofSize: 14)
         message.textColor = .secondaryLabelColor
@@ -73,13 +79,16 @@ final class CommandCenterView: NSView, NSTextFieldDelegate, NSTableViewDataSourc
             view.translatesAutoresizingMaskIntoConstraints = false
             panel.addSubview(view)
         }
+        centering = panel.centerXAnchor.constraint(equalTo: centerXAnchor, constant: columnInset / 2)
         listHeight = scrollView.heightAnchor.constraint(equalToConstant: 0)
         listHeight.priority = .dragThatCannotResizeWindow
-        let preferredWidth = panel.widthAnchor.constraint(equalToConstant: 720)
+        let preferredWidth = panel.widthAnchor.constraint(equalToConstant: 600)
         preferredWidth.priority = .defaultHigh + 1
         NSLayoutConstraint.activate([
-            panel.centerXAnchor.constraint(equalTo: centerXAnchor),
-            panel.topAnchor.constraint(equalTo: topAnchor, constant: 120),
+            centering!,
+            // Top-aligned into a slot that sits a fifth of the way down, so the
+            // search field stays put as results grow and shrink.
+            NSLayoutConstraint(item: panel, attribute: .top, relatedBy: .equal, toItem: self, attribute: .bottom, multiplier: 0.18, constant: 0),
             preferredWidth,
             panel.widthAnchor.constraint(lessThanOrEqualTo: widthAnchor, constant: -48),
             panel.bottomAnchor.constraint(lessThanOrEqualTo: bottomAnchor, constant: -24),
@@ -138,7 +147,7 @@ final class CommandCenterView: NSView, NSTextFieldDelegate, NSTableViewDataSourc
 
     /// The window behind dims so the panel reads as the one thing to use.
     override func draw(_ dirtyRect: NSRect) {
-        NSColor.black.withAlphaComponent(0.28).setFill()
+        NSColor.black.withAlphaComponent(0.2).setFill()
         dirtyRect.fill()
     }
 
@@ -248,9 +257,9 @@ private final class CenterPanel: NSView {
         layer?.cornerRadius = Self.cornerRadius
         layer?.cornerCurve = .continuous
         layer?.borderWidth = 1
-        layer?.shadowOpacity = 0.45
-        layer?.shadowRadius = 30
-        layer?.shadowOffset = NSSize(width: 0, height: -10)
+        layer?.shadowOpacity = 0.55
+        layer?.shadowRadius = 44
+        layer?.shadowOffset = NSSize(width: 0, height: -18)
     }
 
     required init?(coder: NSCoder) {
@@ -261,7 +270,7 @@ private final class CenterPanel: NSView {
 
     override func updateLayer() {
         layer?.backgroundColor = Theme.dynamic(dark: NSColor(white: 0.05, alpha: 0.96), light: NSColor(white: 0.97, alpha: 0.97)).cgColor(in: effectiveAppearance)
-        layer?.borderColor = Theme.ink(0.12).cgColor(in: effectiveAppearance)
+        layer?.borderColor = Theme.ink(0.15).cgColor(in: effectiveAppearance)
     }
 
     override func viewDidChangeEffectiveAppearance() {
@@ -296,8 +305,8 @@ private final class HairlineView: NSView {
 /// The selected entry sits in a pill set in from the panel's edges.
 private final class CenterRowView: NSTableRowView {
     override func drawSelection(in dirtyRect: NSRect) {
-        Theme.ink(0.09).setFill()
-        NSBezierPath(roundedRect: bounds.insetBy(dx: 12, dy: 2), xRadius: 10, yRadius: 10).fill()
+        Theme.ink(0.10).setFill()
+        NSBezierPath(roundedRect: bounds.insetBy(dx: 12, dy: 1), xRadius: 11, yRadius: 11).fill()
     }
 }
 
@@ -305,12 +314,12 @@ private final class CenterHeaderView: NSTableCellView {
     init(title: String) {
         super.init(frame: .zero)
         let label = NSTextField(labelWithString: title)
-        label.font = .systemFont(ofSize: 13)
-        label.textColor = .secondaryLabelColor
+        label.font = .systemFont(ofSize: 13.5)
+        label.textColor = Theme.text(0.38)
         label.translatesAutoresizingMaskIntoConstraints = false
         addSubview(label)
         NSLayoutConstraint.activate([
-            label.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 26),
+            label.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 28),
             label.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -6),
         ])
     }
@@ -329,15 +338,16 @@ private final class CenterEntryView: NSTableCellView {
             icon.image = NSImage(named: "Agents/\(image)")
         } else {
             icon.image = NSImage(systemSymbolName: entry.symbol, accessibilityDescription: nil)
-            icon.symbolConfiguration = .init(pointSize: 15, weight: .regular)
-            icon.contentTintColor = .labelColor
+            icon.symbolConfiguration = .init(pointSize: 16, weight: .medium)
+            icon.contentTintColor = Theme.text(0.7)
         }
         let title = NSTextField(labelWithString: entry.title)
-        title.font = .systemFont(ofSize: 15)
+        title.font = .systemFont(ofSize: 16)
+        title.textColor = Theme.text(0.85)
         title.lineBreakMode = .byTruncatingTail
         let detail = NSTextField(labelWithString: entry.detail)
-        detail.font = .systemFont(ofSize: 12)
-        detail.textColor = .secondaryLabelColor
+        detail.font = .systemFont(ofSize: 15)
+        detail.textColor = Theme.text(0.38)
         detail.lineBreakMode = .byTruncatingTail
         detail.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         let keys = NSStackView(views: entry.shortcut.map(KeyCapView.init))
@@ -351,16 +361,16 @@ private final class CenterEntryView: NSTableCellView {
             addSubview(view)
         }
         NSLayoutConstraint.activate([
-            icon.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 26),
+            icon.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 28),
             icon.centerYAnchor.constraint(equalTo: centerYAnchor),
-            icon.widthAnchor.constraint(equalToConstant: 18),
-            icon.heightAnchor.constraint(equalToConstant: 18),
+            icon.widthAnchor.constraint(equalToConstant: 20),
+            icon.heightAnchor.constraint(equalToConstant: 20),
             title.leadingAnchor.constraint(equalTo: icon.trailingAnchor, constant: 14),
             title.centerYAnchor.constraint(equalTo: centerYAnchor),
             title.trailingAnchor.constraint(lessThanOrEqualTo: detail.leadingAnchor, constant: -12),
             detail.trailingAnchor.constraint(equalTo: keys.leadingAnchor, constant: entry.shortcut.isEmpty ? 0 : -12),
             detail.centerYAnchor.constraint(equalTo: centerYAnchor),
-            keys.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -26),
+            keys.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -28),
             keys.centerYAnchor.constraint(equalTo: centerYAnchor),
         ])
     }

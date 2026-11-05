@@ -442,8 +442,8 @@ final class SidebarViewController: NSViewController, NSTableViewDataSource, NSTa
 
     func tableView(_ tableView: NSTableView, heightOfRow row: Int) -> CGFloat {
         switch self.row(at: row) {
-        case .workspace: 46
-        case .tab, nil: 28
+        case .workspace: 50
+        case .tab, nil: 32
         case .newTerminal: NewTerminalCellView.height
         }
     }
@@ -584,7 +584,7 @@ private final class SidebarRowView: NSTableRowView {
     var isHovered = false {
         didSet { if isHovered != oldValue { needsDisplay = true } }
     }
-    var pillInsets = NSEdgeInsets(top: 1, left: 8, bottom: 1, right: 8)
+    var pillInsets = NSEdgeInsets(top: 1, left: Theme.rowInset, bottom: 1, right: Theme.rowInset)
 
     private var pill: NSBezierPath {
         let rect = NSRect(x: bounds.minX + pillInsets.left, y: bounds.minY + pillInsets.top,
@@ -600,7 +600,7 @@ private final class SidebarRowView: NSTableRowView {
 
     override func drawBackground(in dirtyRect: NSRect) {
         guard isHovered, !isSelected else { return }
-        Theme.ink(0.06).setFill()
+        Theme.hover.setFill()
         pill.fill()
     }
 }
@@ -670,11 +670,11 @@ private final class WorkspaceCellView: SidebarCellView, NSTextFieldDelegate {
 
     init() {
         super.init(frame: .zero)
-        titleLabel.font = .systemFont(ofSize: 13, weight: .semibold)
+        titleLabel.font = .systemFont(ofSize: 14, weight: .medium)
         titleLabel.lineBreakMode = .byTruncatingTail
         titleLabel.delegate = self
-        detailLabel.textColor = .secondaryLabelColor
-        detailLabel.font = .monospacedSystemFont(ofSize: 10.5, weight: .regular)
+        detailLabel.textColor = Theme.text(0.45)
+        detailLabel.font = .monospacedSystemFont(ofSize: 11, weight: .regular)
         detailLabel.lineBreakMode = .byTruncatingMiddle
 
         let stack = NSStackView(views: [titleLabel, detailLabel])
@@ -694,7 +694,7 @@ private final class WorkspaceCellView: SidebarCellView, NSTextFieldDelegate {
         addSubview(buttons)
         addSubview(agentDot)
         NSLayoutConstraint.activate([
-            stack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 18),
+            stack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Theme.rowInset + 9),
             stack.trailingAnchor.constraint(equalTo: buttons.leadingAnchor, constant: -6),
             stack.centerYAnchor.constraint(equalTo: centerYAnchor),
             titleLabel.widthAnchor.constraint(lessThanOrEqualTo: stack.widthAnchor),
@@ -713,7 +713,7 @@ private final class WorkspaceCellView: SidebarCellView, NSTextFieldDelegate {
 
     /// The selected workspace's name is full ink; the others step back.
     var isCurrent = false {
-        didSet { titleLabel.textColor = isCurrent ? .labelColor : .labelColor.withAlphaComponent(0.72) }
+        didSet { titleLabel.textColor = isCurrent ? Theme.text(0.95) : Theme.text(0.78) }
     }
 
     /// The dot stands for every terminal in the workspace, at the end of its
@@ -825,7 +825,7 @@ private final class TabCellView: SidebarCellView, NSTextFieldDelegate {
 
     init() {
         super.init(frame: .zero)
-        titleLabel.font = .systemFont(ofSize: 12.5)
+        titleLabel.font = .systemFont(ofSize: 14)
         titleLabel.lineBreakMode = .byTruncatingTail
         titleLabel.delegate = self
         icon.translatesAutoresizingMaskIntoConstraints = false
@@ -838,10 +838,10 @@ private final class TabCellView: SidebarCellView, NSTextFieldDelegate {
         addSubview(closeButton)
         addSubview(agentDot)
         NSLayoutConstraint.activate([
-            icon.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 22),
+            icon.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Theme.rowInset + Theme.tabIndent + 9),
             icon.centerYAnchor.constraint(equalTo: centerYAnchor),
-            icon.widthAnchor.constraint(equalToConstant: 14),
-            icon.heightAnchor.constraint(equalToConstant: 14),
+            icon.widthAnchor.constraint(equalToConstant: 16),
+            icon.heightAnchor.constraint(equalToConstant: 16),
             titleLabel.leadingAnchor.constraint(equalTo: icon.trailingAnchor, constant: 8),
             titleLabel.trailingAnchor.constraint(equalTo: closeButton.leadingAnchor, constant: -6),
             titleLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
@@ -861,8 +861,8 @@ private final class TabCellView: SidebarCellView, NSTextFieldDelegate {
 
     var isCurrent = false {
         didSet {
-            titleLabel.textColor = isCurrent ? .labelColor : .secondaryLabelColor
-            icon.contentTintColor = isCurrent ? .labelColor : .secondaryLabelColor
+            titleLabel.textColor = isCurrent ? Theme.text(0.95) : Theme.text(0.62)
+            icon.contentTintColor = isCurrent ? Theme.ink(0.85) : Theme.ink(0.4)
         }
     }
 
@@ -965,17 +965,17 @@ private final class TabCellView: SidebarCellView, NSTextFieldDelegate {
 private final class NewTerminalCellView: SidebarCellView {
     static let height: CGFloat = 44
     /// Room above the pill for the hairline and a gap.
-    static let pillInsets = NSEdgeInsets(top: 10, left: 8, bottom: 2, right: 8)
+    static let pillInsets = NSEdgeInsets(top: 10, left: Theme.rowInset, bottom: 2, right: Theme.rowInset)
     private let hairline = NSView()
 
     init() {
         super.init(frame: .zero)
         let icon = NSImageView(image: NSImage(systemSymbolName: "plus", accessibilityDescription: nil)!)
         icon.symbolConfiguration = .init(pointSize: 11, weight: .medium)
-        icon.contentTintColor = .secondaryLabelColor
+        icon.contentTintColor = Theme.text(0.45)
         let label = NSTextField(labelWithString: "New Terminal")
-        label.font = .systemFont(ofSize: 12.5)
-        label.textColor = .secondaryLabelColor
+        label.font = .systemFont(ofSize: 14)
+        label.textColor = Theme.text(0.45)
         hairline.wantsLayer = true
         for child in [hairline, icon, label] {
             child.translatesAutoresizingMaskIntoConstraints = false
@@ -983,8 +983,8 @@ private final class NewTerminalCellView: SidebarCellView {
         }
         let pill = Self.pillInsets
         NSLayoutConstraint.activate([
-            hairline.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 14),
-            hairline.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -14),
+            hairline.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Theme.rowInset + 4),
+            hairline.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -(Theme.rowInset + 4)),
             hairline.topAnchor.constraint(equalTo: topAnchor, constant: 4),
             hairline.heightAnchor.constraint(equalToConstant: 1),
             icon.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 22),

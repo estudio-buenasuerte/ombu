@@ -8,21 +8,24 @@ final class TerminalAreaViewController: NSViewController {
     /// never show the desktop through.
     var backgroundColor: NSColor {
         get { paneTreeView.backgroundColor }
-        set { paneTreeView.backgroundColor = newValue }
-    }
-    /// The terminal's background at its opacity, behind the header and the
-    /// empty state, so both read as part of the terminal rather than chrome.
-    var surfaceFill: NSColor = .black {
-        didSet {
-            header.fill = surfaceFill
-            emptyState.fill = surfaceFill
+        set {
+            paneTreeView.backgroundColor = newValue
+            card.fill = newValue
+            header.fill = newValue
+            emptyState.fill = newValue
         }
+    }
+    /// The card starts flush at the sidebar's edge and keeps a gutter only
+    /// when the sidebar is hidden.
+    var cardLeadingInset: CGFloat = 0 {
+        didSet { cardLeading?.constant = cardLeadingInset }
     }
     var tabProcess: @MainActor (TerminalTab) -> TabProcess? = { _ in nil }
     let paneTreeView = PaneTreeView()
     private let card = CardView()
     private let header = PaneHeaderView()
     private let emptyState = EmptyStateView()
+    private var cardLeading: NSLayoutConstraint?
     private var workspace: Workspace?
 
     override func loadView() {
@@ -34,8 +37,10 @@ final class TerminalAreaViewController: NSViewController {
         card.content.addSubview(header)
         card.content.addSubview(paneTreeView)
         card.content.addSubview(emptyState)
+        let leading = card.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: cardLeadingInset)
+        cardLeading = leading
         NSLayoutConstraint.activate([
-            card.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: Theme.cardInset),
+            leading,
             card.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -Theme.cardInset),
             card.topAnchor.constraint(equalTo: view.topAnchor, constant: Theme.cardInset),
             card.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -Theme.cardInset),
@@ -73,11 +78,15 @@ final class TerminalAreaViewController: NSViewController {
     }
 }
 
-/// A rounded, clipped container with a hairline and a soft shadow. The clip
-/// and the shadow cannot share a layer, so the shadow is on this view and the
-/// clip on `content`.
+/// A rounded, clipped container with a hairline and a soft shadow, painted
+/// in the terminal's background so the terminal reads as a solid sheet
+/// however translucent Ghostty draws it. The clip and the shadow cannot
+/// share a layer, so the shadow is on this view and the clip on `content`.
 final class CardView: NSView {
     let content = NSView()
+    var fill: NSColor = .black {
+        didSet { needsDisplay = true }
+    }
 
     override init(frame: NSRect) {
         super.init(frame: frame)
@@ -114,7 +123,8 @@ final class CardView: NSView {
     override var wantsUpdateLayer: Bool { true }
 
     override func updateLayer() {
-        content.layer?.borderColor = Theme.ink(0.10).cgColor(in: effectiveAppearance)
+        content.layer?.backgroundColor = fill.cgColor
+        content.layer?.borderColor = Theme.cardBorder.cgColor(in: effectiveAppearance)
     }
 
     override func viewDidChangeEffectiveAppearance() {
@@ -142,46 +152,41 @@ class SurfaceFillView: NSView {
     }
 }
 
-/// The strip above the panes: what the focused pane runs, its title and
-/// where it is. It sits under the window's title bar, which only drags the
-/// window there, so nothing in it needs clicking.
+/// The strip above the panes: what the focused pane runs, its title and a
+/// breadcrumb of where it is. It sits under the window's title bar, which
+/// only drags the window there, so nothing in it needs clicking.
 final class PaneHeaderView: SurfaceFillView {
-    static let height: CGFloat = 32
+    static let height: CGFloat = 46
     private let icon = NSImageView()
     private let title = NSTextField(labelWithString: "")
     private let path = NSTextField(labelWithString: "")
-    private let hairline = NSView()
 
     override init(frame: NSRect) {
         super.init(frame: frame)
         icon.imageScaling = .scaleProportionallyUpOrDown
-        icon.contentTintColor = .secondaryLabelColor
-        title.font = .systemFont(ofSize: 12.5, weight: .medium)
+        title.font = .systemFont(ofSize: 15)
         title.lineBreakMode = .byTruncatingTail
         title.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-        path.font = .monospacedSystemFont(ofSize: 11, weight: .regular)
-        path.textColor = .secondaryLabelColor
+        path.font = .systemFont(ofSize: 13)
         path.lineBreakMode = .byTruncatingMiddle
         path.setContentCompressionResistancePriority(.defaultLow - 1, for: .horizontal)
-        hairline.wantsLayer = true
-        for child in [icon, title, path, hairline] {
+        for child in [icon, title, path] {
             child.translatesAutoresizingMaskIntoConstraints = false
             addSubview(child)
         }
         NSLayoutConstraint.activate([
-            icon.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 14),
+            icon.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
             icon.centerYAnchor.constraint(equalTo: centerYAnchor),
-            icon.widthAnchor.constraint(equalToConstant: 14),
-            icon.heightAnchor.constraint(equalToConstant: 14),
-            title.leadingAnchor.constraint(equalTo: icon.trailingAnchor, constant: 8),
+            icon.widthAnchor.constraint(equalToConstant: 20),
+            icon.heightAnchor.constraint(equalToConstant: 20),
+            title.leadingAnchor.constraint(equalTo: icon.trailingAnchor, constant: 10),
             title.centerYAnchor.constraint(equalTo: centerYAnchor),
-            path.leadingAnchor.constraint(equalTo: title.trailingAnchor, constant: 10),
-            path.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -14),
+            path.leadingAnchor.constraint(equalTo: title.trailingAnchor, constant: 12),
+            path.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -16),
             path.centerYAnchor.constraint(equalTo: centerYAnchor),
-            hairline.leadingAnchor.constraint(equalTo: leadingAnchor),
-            hairline.trailingAnchor.constraint(equalTo: trailingAnchor),
-            hairline.bottomAnchor.constraint(equalTo: bottomAnchor),
-            hairline.heightAnchor.constraint(equalToConstant: 1),
+            // A long title and path never swallow the whole strip.
+            NSLayoutConstraint(item: path, attribute: .trailing, relatedBy: .lessThanOrEqual,
+                               toItem: self, attribute: .trailing, multiplier: 0.8, constant: 0),
         ])
     }
 
@@ -198,22 +203,27 @@ final class PaneHeaderView: SurfaceFillView {
         case nil:
             icon.image = NSImage(systemSymbolName: "terminal", accessibilityDescription: "Shell")
         }
-        icon.symbolConfiguration = .init(pointSize: 11, weight: .medium)
-        let directory = surface.workingDirectory?.abbreviatingHome
+        icon.symbolConfiguration = .init(pointSize: 14, weight: .medium)
         title.stringValue = name
         // The shell names its prompt after the directory, in which case the
-        // directory is already on show.
-        path.stringValue = directory == name ? "" : directory ?? ""
+        // breadcrumb would only repeat the title.
+        let directory = surface.workingDirectory?.abbreviatingHome
+        path.stringValue = directory == name ? "" : Self.breadcrumb(directory)
+        updateInk()
     }
 
-    override func updateLayer() {
-        super.updateLayer()
-        hairline.layer?.backgroundColor = Theme.ink(0.08).cgColor(in: effectiveAppearance)
+    /// "~/Developer/ombu" as "~ › Developer › ombu".
+    static func breadcrumb(_ directory: String?) -> String {
+        guard let directory, !directory.isEmpty else { return "" }
+        let root = directory.hasPrefix("/") ? ["/"] : []
+        return (root + directory.split(separator: "/").map(String.init)).joined(separator: "  ›  ")
     }
 
-    override func viewDidChangeEffectiveAppearance() {
-        super.viewDidChangeEffectiveAppearance()
-        needsDisplay = true
+    /// The strip takes the terminal's appearance, so its ink is the window's.
+    private func updateInk() {
+        title.textColor = Theme.text(0.9)
+        path.textColor = Theme.text(0.5)
+        icon.contentTintColor = Theme.text(0.6)
     }
 }
 
@@ -222,14 +232,14 @@ final class EmptyStateView: SurfaceFillView {
     override init(frame: NSRect) {
         super.init(frame: frame)
         let icon = NSImageView(image: NSImage(systemSymbolName: "terminal", accessibilityDescription: nil)!)
-        icon.symbolConfiguration = .init(pointSize: 34, weight: .regular)
-        icon.contentTintColor = .tertiaryLabelColor
+        icon.symbolConfiguration = .init(pointSize: 34, weight: .medium)
+        icon.contentTintColor = Theme.text(0.4)
         let title = NSTextField(labelWithString: "No Tabs")
         title.font = .systemFont(ofSize: 15, weight: .semibold)
-        title.textColor = .secondaryLabelColor
+        title.textColor = Theme.text(0.7)
         let hint = NSTextField(labelWithString: "Press ⌘T to open a new tab.")
         hint.font = .systemFont(ofSize: 13)
-        hint.textColor = .tertiaryLabelColor
+        hint.textColor = Theme.text(0.45)
         let stack = NSStackView(views: [icon, title, hint])
         stack.orientation = .vertical
         stack.alignment = .centerX

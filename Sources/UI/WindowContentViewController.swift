@@ -42,10 +42,17 @@ final class WindowContentViewController: NSViewController {
             sidebar.view.isHidden = newValue
             handle.isHidden = newValue
             // The sidebar keeps its width while hidden, so its own layout is
-            // never squeezed; the terminal moves to the window's edge instead.
+            // never squeezed; the terminal moves to the window's edge instead,
+            // and its card takes the gutter the sidebar no longer provides.
             contentAfterSidebar.isActive = !newValue
             contentAtEdge.isActive = newValue
+            (content as? TerminalAreaViewController)?.cardLeadingInset = newValue ? Theme.cardInset : 0
         }
+    }
+
+    /// How far the terminal column starts from the window's leading edge.
+    var sidebarInset: CGFloat {
+        isSidebarHidden ? 0 : sidebarWidth.constant
     }
 
     override func loadView() {
@@ -64,7 +71,7 @@ final class WindowContentViewController: NSViewController {
         }
 
         let savedWidth = defaults.double(forKey: Self.widthKey)
-        sidebarWidth = sidebar.view.widthAnchor.constraint(equalToConstant: Self.clampedWidth(savedWidth > 0 ? savedWidth : 240))
+        sidebarWidth = sidebar.view.widthAnchor.constraint(equalToConstant: Self.clampedWidth(savedWidth > 0 ? savedWidth : Theme.sidebarWidth))
         contentAfterSidebar = content.view.leadingAnchor.constraint(equalTo: sidebar.view.trailingAnchor)
         contentAtEdge = content.view.leadingAnchor.constraint(equalTo: view.leadingAnchor)
         // Until the window's layout guide is known, the children start at the top.
