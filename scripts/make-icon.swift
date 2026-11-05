@@ -1,7 +1,8 @@
 import AppKit
 
 // Renders the Ombú app icon: ABC Diatype Mono's ó cut into eight horizontal
-// bars, after IBM's 1972 mark, white on a near-black squircle. Writes 1024 masters plus a contact sheet;
+// bars after IBM's 1972 mark, the bar ends rounded and softly glowing like a
+// tube, white on a near-black squircle. Writes 1024 masters plus a contact sheet;
 // slice the chosen master with sips into both appiconsets.
 // Usage: swiftc scripts/make-icon.swift -o /tmp/make-icon && /tmp/make-icon <out-dir> [shape-mask.png]
 
@@ -244,9 +245,36 @@ func scanlined(_ rep: NSBitmapImageRep, period: CGFloat, strength: CGFloat) -> N
     return rep
 }
 
+
+// Rounds every corner of a white-on-transparent layer by blurring its alpha
+// and thresholding it back to a hard edge.
+func roundCorners(_ rep: NSBitmapImageRep, radius: CGFloat) -> NSBitmapImageRep {
+    let w = rep.pixelsWide, h = rep.pixelsHigh
+    var a = [Float](repeating: 0, count: w * h)
+    for y in 0..<h { for x in 0..<w { a[y * w + x] = Float(rep.colorAt(x: x, y: y)?.alphaComponent ?? 0) } }
+    let r = max(1, Int(radius / 1.7))
+    func blur(_ src: [Float]) -> [Float] {
+        var out = src
+        for y in 0..<h { for x in 0..<w { var s: Float = 0; var n: Float = 0; for k in max(0, x - r)...min(w - 1, x + r) { s += src[y * w + k]; n += 1 }; out[y * w + x] = s / n } }
+        var out2 = out
+        for y in 0..<h { for x in 0..<w { var s: Float = 0; var n: Float = 0; for k in max(0, y - r)...min(h - 1, y + r) { s += out[k * w + x]; n += 1 }; out2[y * w + x] = s / n } }
+        return out2
+    }
+    var b = a
+    for _ in 0..<3 { b = blur(b) }
+    let out = bitmap()
+    NSGraphicsContext.saveGraphicsState()
+    NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: out)
+    let c = NSGraphicsContext.current!.cgContext
+    c.setFillColor(NSColor.white.cgColor)
+    for y in 0..<h { for x in 0..<w where b[y * w + x] > 0.5 { c.fill(CGRect(x: x, y: h - 1 - y, width: 1, height: 1)) } }
+    NSGraphicsContext.restoreGraphicsState()
+    return out
+}
+
 // IBM 1972: the glyph itself, cut into evenly spaced horizontal bars, no glow.
 // `rounded` draws each bar as capsules so its left and right ends are half-circles.
-func ibmTile(bars: Int, duty: CGFloat, size: CGFloat, rounded: Bool = false, glow: CGFloat = 0, family: String = "ABC Diatype Mono") -> NSBitmapImageRep {
+func ibmTile(bars: Int, duty: CGFloat, size: CGFloat, rounded: Bool = false, radius: CGFloat = 0.5, glow: CGFloat = 0, family: String = "ABC Diatype Mono") -> NSBitmapImageRep {
     let f = font(family, bold: true, size: size)
     let a = NSAttributedString(string: "\u{F3}", attributes: [.font: f, .foregroundColor: NSColor.white])
     let line = CTLineCreateWithAttributedString(a)
@@ -265,39 +293,16 @@ func ibmTile(bars: Int, duty: CGFloat, size: CGFloat, rounded: Bool = false, glo
     let barH = pitch * duty
     let firstY = gy + ob.minY - pitch * 20
 
-    let layer = bitmap()
+    var layer = bitmap()
     NSGraphicsContext.saveGraphicsState()
     NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: layer)
     let lctx = NSGraphicsContext.current!.cgContext
-    if rounded {
-        let m = mask { let c = NSGraphicsContext.current!.cgContext; c.textPosition = CGPoint(x: gx, y: gy); CTLineDraw(line, c) }
-        NSColor.white.setFill()
-        var y = firstY
-        while y < side {
-            if y + barH > 0 {
-                // Coverage along the bar, averaged over three of its rows.
-                let rows = [y + barH * 0.25, y + barH * 0.5, y + barH * 0.75]
-                var runStart: Int? = nil
-                for x in 0...Int(side) {
-                    var v: CGFloat = 0
-                    for r in rows { if r >= 0, r < side, let c = m.colorAt(x: min(x, Int(side) - 1), y: Int(side - 1 - r)) { v += c.redComponent } }
-                    let on = x < Int(side) && v / 3 > 0.5
-                    if on, runStart == nil { runStart = x }
-                    if !on, let s = runStart {
-                        NSBezierPath(roundedRect: NSRect(x: CGFloat(s), y: y, width: CGFloat(x - s), height: barH), xRadius: barH / 2, yRadius: barH / 2).fill()
-                        runStart = nil
-                    }
-                }
-            }
-            y += pitch
-        }
-    } else {
-        lctx.textPosition = CGPoint(x: gx, y: gy)
-        CTLineDraw(line, lctx)
-        var y = firstY
-        while y < side + pitch { lctx.clear(CGRect(x: 0, y: y + barH, width: side, height: pitch - barH)); y += pitch }
-    }
+    lctx.textPosition = CGPoint(x: gx, y: gy)
+    CTLineDraw(line, lctx)
+    var y = firstY
+    while y < side + pitch { lctx.clear(CGRect(x: 0, y: y + barH, width: side, height: pitch - barH)); y += pitch }
     NSGraphicsContext.restoreGraphicsState()
+    if rounded { layer = roundCorners(layer, radius: barH * radius) }
     let img = NSImage(size: NSSize(width: side, height: side)); img.addRepresentation(layer)
     return tile { ctx in
         if glow > 0 {
@@ -310,12 +315,12 @@ func ibmTile(bars: Int, duty: CGFloat, size: CGFloat, rounded: Bool = false, glo
         }
     }
 }
+// The shipped icon, plus the same bars without rounding or glow for comparison.
+sheet.append(ibmTile(bars: 8, duty: 0.62, size: 820, rounded: true, radius: 0.5, glow: 14))
 sheet.append(ibmTile(bars: 8, duty: 0.62, size: 820))
-sheet.append(ibmTile(bars: 8, duty: 0.62, size: 820, rounded: true))
-sheet.append(ibmTile(bars: 8, duty: 0.62, size: 820, rounded: true, glow: 16))
 
 // Write masters and a contact sheet at Dock-ish size (256 + 64).
-let names = ["ibm", "ibm-rounded", "ibm-rounded-glow"]
+let names = ["icon", "icon-flat"]
 for (i, rep) in sheet.enumerated() {
     try! rep.representation(using: .png, properties: [:])!.write(to: URL(fileURLWithPath: "\(outDir)/ombu-\(names[i])-1024.png"))
 }
