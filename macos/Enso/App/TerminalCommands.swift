@@ -61,10 +61,9 @@ struct TerminalCommands: Commands {
             .keyboardShortcut("n", modifiers: .command)
 
             // Escape hatch (#28): ⌘N follows the active tab into its folder,
-            // so ⌥⌘N stays the deliberate way to make a top-level tab. Still
-            // continues in the active tab's working directory.
+            // so ⌥⌘N makes a top-level tab in the default folder.
             Button("New Top-Level Terminal") {
-                store.createSession(workingDirectory: store.selectedSession?.workingDirectory)
+                store.createSession(workingDirectory: DefaultDirectory.resolve())
             }
             .keyboardShortcut("n", modifiers: [.command, .option])
 

@@ -403,14 +403,13 @@ final class TerminalSessionStore: ObservableObject {
 
     /// ⌘N and the command center default: new terminals join the active
     /// tab's folder (#28) and continue in its working directory rather than
-    /// resetting to home. A loose tab keeps today's behavior — a new
-    /// top-level tab. The deliberate top-level door stays open via ⌥⌘N and
-    /// the sidebar's root-level "New Terminal".
+    /// resetting to home. A loose tab gets a new top-level tab in the
+    /// default folder.
     func createSessionInheritingWorkingDirectory() {
         if let folder = selectionFolder {
             createSession(inFolder: folder.id, workingDirectory: selectedSession?.workingDirectory)
         } else {
-            createSession(workingDirectory: selectedSession?.workingDirectory)
+            createSession(workingDirectory: DefaultDirectory.resolve())
         }
     }
 

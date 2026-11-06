@@ -1319,7 +1319,7 @@ private struct SpacePage: View {
             }
 
             Button {
-                store.createSession(inSpace: space.id)
+                store.createSession(inSpace: space.id, workingDirectory: DefaultDirectory.resolve())
             } label: {
                 HStack(spacing: 8) {
                     Image(systemName: "plus")

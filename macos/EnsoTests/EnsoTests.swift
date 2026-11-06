@@ -60,7 +60,7 @@ struct NewTabFolderInheritanceTests {
         #expect(store.activeSpace.ephemeralSessions.count == 2)
         let created = try #require(store.activeSpace.ephemeralSessions.last)
         #expect(created.id == store.selection)
-        #expect(created.workingDirectory == "/tmp/scratch")
+        #expect(created.workingDirectory == DefaultDirectory.resolve())
     }
 
     @Test func selectionFolderReflectsActiveTab() async throws {

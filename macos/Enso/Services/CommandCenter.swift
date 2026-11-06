@@ -439,7 +439,7 @@ final class CommandCenter: ObservableObject {
             verb: "Open",
             section: section
         ) { [weak store] in
-            store?.createSession(workingDirectory: NSHomeDirectory())
+            store?.createSession(workingDirectory: DefaultDirectory.resolve())
         })
         if folder == nil, let current = store.selectedSession {
             // Loose tab: "folder" means the working directory instead.

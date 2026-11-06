@@ -1253,6 +1253,46 @@ struct TerminalSessionStoreTests {
         #expect(store.selection == created.id)
         #expect(Set(store.sessions.map(\.id)) == [pinned.id, created.id])
     }
+
+    @Test func newTerminalFromLooseTabStartsInDefaultDirectory() throws {
+        let directory = try makeTempDirectory("loose-new-terminal")
+        defer { try? FileManager.default.removeItem(atPath: directory) }
+        let tab = TerminalSession(title: "loose", workingDirectory: directory)
+        let store = TerminalSessionStore(
+            spaces: [SidebarSpace(name: "Main", ephemeralSessions: [tab], lastSelection: tab.id)],
+            persistToDisk: false
+        )
+
+        store.createSessionInheritingWorkingDirectory()
+
+        #expect(store.activeSpace.ephemeralSessions.count == 2)
+        let created = try #require(store.activeSpace.ephemeralSessions.last)
+        #expect(created.id != tab.id)
+        #expect(created.workingDirectory != directory)
+        #expect(created.workingDirectory == DefaultDirectory.resolve())
+        #expect(store.selection == created.id)
+    }
+
+    @Test func newTerminalFromFolderTabInheritsWorkingDirectory() throws {
+        let directory = try makeTempDirectory("folder-new-terminal")
+        defer { try? FileManager.default.removeItem(atPath: directory) }
+        let tab = TerminalSession(title: "main", workingDirectory: directory)
+        let folderID = TerminalFolder.ID()
+        let store = makeStore(
+            folder: TerminalFolder(id: folderID, title: "project", sessions: [tab]),
+            select: tab.id
+        )
+
+        store.createSessionInheritingWorkingDirectory()
+
+        let updatedFolder = try #require(folder(folderID, in: store))
+        #expect(updatedFolder.sessions.count == 2)
+        let created = try #require(updatedFolder.sessions.last)
+        #expect(created.id != tab.id)
+        #expect(created.workingDirectory == directory)
+        #expect(store.activeSpace.ephemeralSessions.isEmpty)
+        #expect(store.selection == created.id)
+    }
 }
 
 /// What the close confirmation decides to stop the user for. The tabs with
