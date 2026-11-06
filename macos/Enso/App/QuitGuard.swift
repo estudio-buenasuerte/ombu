@@ -156,6 +156,12 @@ extension NSAlert {
 /// AppKit lifecycle hook for EnsoApp; SwiftUI has no native quit intercept.
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    func application(_ application: NSApplication, open urls: [URL]) {
+        for url in urls {
+            ServiceProvider.shared.open(url)
+        }
+    }
+
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         guard QuitGuard.shared.consentsToTerminate() else { return .terminateCancel }
         QuitGuard.shared.writeQuitSnapshot()

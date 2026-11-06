@@ -402,7 +402,8 @@ final class TerminalSessionStore: ObservableObject {
         }
     }
 
-    func createSession(inSpace spaceID: SidebarSpace.ID? = nil, workingDirectory: String? = nil) {
+    @discardableResult
+    func createSession(inSpace spaceID: SidebarSpace.ID? = nil, workingDirectory: String? = nil) -> TerminalSession.ID {
         let targetID = spaceID ?? activeSpaceID
         let session = Self.makeSession(workingDirectory: workingDirectory, accentIndex: sessions.count)
         withSpace(targetID) { space in
@@ -411,6 +412,7 @@ final class TerminalSessionStore: ObservableObject {
         // One atomic transition (or same-space selection landing): the new
         // tab is the final selection when the sweep is aimed.
         activateSpace(targetID, selecting: session.id)
+        return session.id
     }
 
     /// Palette "New Terminal in Current Folder": inherits the given working

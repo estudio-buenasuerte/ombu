@@ -5,7 +5,50 @@
 	<!-- Merged with the generated Info.plist; declares the Finder
 	     Services entry (right-click a folder → New Ombú Terminal Here).
 	     Mirrors Ghostty's declaration — Finder reliably surfaces the
-	     NSSendTypes/NSFilenamesPboardType form. -->
+	     NSSendTypes/NSFilenamesPboardType form. Document types and the ssh
+	     URL scheme let macOS hand folders, scripts, and SSH links to Ombú. -->
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Folder</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.folder</string>
+			</array>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Shell Script</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.apple.terminal.shell-script</string>
+				<string>public.shell-script</string>
+				<string>public.unix-executable</string>
+			</array>
+			<key>CFBundleTypeRole</key>
+			<string>Shell</string>
+			<key>LSHandlerRank</key>
+			<string>Default</string>
+		</dict>
+	</array>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.buenasuerte.ombu.ssh</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>ssh</string>
+			</array>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+		</dict>
+	</array>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>A program running in Ombú (such as voice dictation) would like to use your microphone.</string>
 	<key>NSServices</key>

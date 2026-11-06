@@ -8,6 +8,8 @@ final class GhosttySurfaceManager {
 
     private var views: [TerminalSession.ID: GhosttySurfaceView] = [:]
 
+    var openRequestInput: [TerminalSession.ID: String] = [:]
+
     #if ENSO_DEVTOOLS
     /// Space switch test: what a session's new surface types at spawn, when it
     /// has no restore of its own. Empty unless the test's load is running.
@@ -38,6 +40,9 @@ final class GhosttySurfaceManager {
         var environment = agentStore.spawnEnvironment(forTab: session.id)
         var initialInput = restore.map {
             agentStore.resumeInput(for: $0, currentWorkingDirectory: session.workingDirectory)
+        }
+        if initialInput == nil {
+            initialInput = openRequestInput.removeValue(forKey: session.id)
         }
         #if ENSO_DEVTOOLS
         if initialInput == nil {

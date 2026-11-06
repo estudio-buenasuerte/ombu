@@ -11,6 +11,7 @@
 		A100000C2FD810C30001BF12 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000B2FD810C30001BF12 /* ContentView.swift */; };
 		A1THEME012FD810C30001BF12 /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1THEME022FD810C30001BF12 /* AppTheme.swift */; };
 		10BFA31A75704F2D91D09BED /* ChromeFont.swift in Sources */ = {isa = PBXBuildFile; fileRef = B850D9D4406D4816BE4E363A /* ChromeFont.swift */; };
+		C86F1FC80DD648DA9796F2F4 /* OpenRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC695D4B44A54FDC86FEA29C /* OpenRequest.swift */; };
 		A1PERFM012FD810C30001BF12 /* PerfMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1PERFM022FD810C30001BF12 /* PerfMonitor.swift */; };
 		A1PERFV012FD810C30001BF12 /* PerfBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1PERFV022FD810C30001BF12 /* PerfBarView.swift */; };
 		A1SWTST012FD810C30001BF12 /* SpaceSwitchTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1SWTST022FD810C30001BF12 /* SpaceSwitchTest.swift */; };
@@ -104,6 +105,7 @@
 		A100000B2FD810C30001BF12 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		A1THEME022FD810C30001BF12 /* AppTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTheme.swift; sourceTree = "<group>"; };
 		B850D9D4406D4816BE4E363A /* ChromeFont.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChromeFont.swift; sourceTree = "<group>"; };
+		AC695D4B44A54FDC86FEA29C /* OpenRequest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenRequest.swift; sourceTree = "<group>"; };
 		A1PERFM022FD810C30001BF12 /* PerfMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerfMonitor.swift; sourceTree = "<group>"; };
 		A1PERFV022FD810C30001BF12 /* PerfBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerfBarView.swift; sourceTree = "<group>"; };
 		A1SWTST022FD810C30001BF12 /* SpaceSwitchTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceSwitchTest.swift; sourceTree = "<group>"; };
@@ -249,6 +251,7 @@
 			children = (
 				A1THEME022FD810C30001BF12 /* AppTheme.swift */,
 				B850D9D4406D4816BE4E363A /* ChromeFont.swift */,
+				AC695D4B44A54FDC86FEA29C /* OpenRequest.swift */,
 				0B1AC28CB94FC789E5010000 /* FolderIcon.swift */,
 				0B03F5AA6B8B8B5DD8010000 /* FolderActivity.swift */,
 			);
@@ -501,6 +504,7 @@
 				A100000C2FD810C30001BF12 /* ContentView.swift in Sources */,
 				A1THEME012FD810C30001BF12 /* AppTheme.swift in Sources */,
 				10BFA31A75704F2D91D09BED /* ChromeFont.swift in Sources */,
+				C86F1FC80DD648DA9796F2F4 /* OpenRequest.swift in Sources */,
 				A1PERFM012FD810C30001BF12 /* PerfMonitor.swift in Sources */,
 				A1PERFV012FD810C30001BF12 /* PerfBarView.swift in Sources */,
 				A1SWTST012FD810C30001BF12 /* SpaceSwitchTest.swift in Sources */,

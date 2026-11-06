@@ -68,13 +68,31 @@ final class ServiceProvider: NSObject {
 
     private weak var store: TerminalSessionStore?
     /// Requests that arrived before launch finished attaching the store.
-    private var pendingPaths: [String] = []
+    private var pendingRequests: [OpenRequest] = []
 
     func attach(store: TerminalSessionStore) {
         self.store = store
-        let paths = pendingPaths
-        pendingPaths = []
-        paths.forEach(openTerminal(at:))
+        let requests = pendingRequests
+        pendingRequests = []
+        for request in requests {
+            switch request {
+            case .directory(let path):
+                openTerminal(at: path)
+            case .command(let directory, let input):
+                run(input, in: directory)
+            }
+        }
+    }
+
+    func open(_ url: URL) {
+        guard let request = OpenRequest.parse(url) else { return }
+        switch request {
+        case .directory(let path):
+            openTerminal(at: path)
+        case .command(let directory, let input):
+            run(input, in: directory)
+        }
+        NSApp.activate(ignoringOtherApps: true)
     }
 
     @objc func newTerminalHere(
@@ -106,10 +124,19 @@ final class ServiceProvider: NSObject {
 
     private func openTerminal(at path: String) {
         guard let store else {
-            pendingPaths.append(path)
+            pendingRequests.append(.directory(path))
             return
         }
         store.createSession(workingDirectory: path)
+    }
+
+    private func run(_ input: String, in directory: String) {
+        guard let store else {
+            pendingRequests.append(.command(directory: directory, input: input))
+            return
+        }
+        let id = store.createSession(workingDirectory: directory)
+        GhosttySurfaceManager.shared.openRequestInput[id] = input
     }
 }
 
