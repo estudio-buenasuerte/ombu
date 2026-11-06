@@ -10,7 +10,8 @@ if [[ $# -ne 1 || ! ${1:-} =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
     exit 1
 fi
 version="$1"
-tag="v$version"
+# Enso's own v-tags live in this repo, so Ombú releases carry their own prefix.
+tag="ombu-$version"
 if [[ -n "$(git status --porcelain)" ]]; then
     echo "Error: working tree is dirty; commit or stash changes before releasing." >&2
     exit 1
