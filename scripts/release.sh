@@ -39,11 +39,6 @@ if ! xcrun --find notarytool > /dev/null 2>&1; then
     echo "Error: notarytool is missing; install Xcode and select it with xcode-select." >&2
     exit 1
 fi
-if ! identities="$(security find-identity -v -p codesigning)" ||
-    [[ "$identities" != *"Developer ID Application:"* ]]; then
-    echo "Error: install a Developer ID Application certificate and private key in your keychain." >&2
-    exit 1
-fi
 if ! xcrun notarytool history --keychain-profile ombu-notary > /dev/null 2>&1; then
     echo "Error: configure the ombu-notary profile with xcrun notarytool store-credentials ombu-notary and verify access." >&2
     exit 1
@@ -61,18 +56,27 @@ if [[ ! -d "$ROOT/macos/GhosttyKit.xcframework" ||
     "$ROOT/scripts/build-ghosttykit.sh"
 fi
 
-echo "==> Build Developer ID application"
+echo "==> Archive and export Developer ID application"
 mkdir -p "$ROOT/build/release"
 build_log="$ROOT/build/release-$version.log"
-app="$ROOT/build/Release-DerivedData/Build/Products/Release/Ombu.app"
+archive="$ROOT/build/release/Ombu-$version.xcarchive"
+export_dir="$ROOT/build/release/export-$version"
+app="$export_dir/Ombu.app"
 zip="$ROOT/build/release/Ombú-$version.zip"
 build_number="$(git rev-list --count HEAD)"
-if ! xcodebuild -project "$ROOT/macos/Enso.xcodeproj" -scheme Enso \
-    -configuration Release -derivedDataPath "$ROOT/build/Release-DerivedData" build \
-    CODE_SIGN_IDENTITY="Developer ID Application" CODE_SIGN_STYLE=Manual \
-    DEVELOPMENT_TEAM=8WA5YWTZ2F OTHER_CODE_SIGN_FLAGS="--timestamp" \
+rm -rf "$archive" "$export_dir"
+# The Developer ID certificate is cloud managed: its private key never reaches
+# this Mac, so only Xcode's export can sign with it. -allowProvisioningUpdates
+# lets Xcode fetch or renew the certificate, which needs it signed in to the team.
+if ! xcodebuild archive -project "$ROOT/macos/Enso.xcodeproj" -scheme Enso \
+    -configuration Release -derivedDataPath "$ROOT/build/Release-DerivedData" \
+    -archivePath "$archive" \
     "MARKETING_VERSION=$version" "CURRENT_PROJECT_VERSION=$build_number" \
-    > "$build_log" 2>&1; then
+    > "$build_log" 2>&1 ||
+    ! xcodebuild -exportArchive -archivePath "$archive" \
+    -exportOptionsPlist "$ROOT/scripts/export-options.plist" \
+    -exportPath "$export_dir" -allowProvisioningUpdates \
+    >> "$build_log" 2>&1; then
     tail -n 40 "$build_log" >&2
     echo "Error: release build failed; see $build_log." >&2
     exit 1
@@ -80,7 +84,7 @@ fi
 
 echo "==> Verify application signature"
 codesign --verify --deep --strict --verbose=2 "$app"
-signature="$(codesign -dv "$app" 2>&1)"
+signature="$(codesign -dvv "$app" 2>&1)"
 if ! grep -q '^Authority=Developer ID Application:' <<< "$signature"; then
     echo "Error: application is not signed with Developer ID Application; check the signing identity." >&2
     exit 1
