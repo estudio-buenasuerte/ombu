@@ -1708,10 +1708,8 @@ private struct SpacePage: View {
                     Image(systemName: sleeps ? "minus" : "xmark")
                         .font(.system(size: 10, weight: .bold))
                 }
-            } else if session.status == .attention {
-                Circle()
-                    .fill(Color.orange)
-                    .frame(width: 6, height: 6)
+            } else if let activity = session.activity {
+                FolderActivityDot(activity: activity)
                     // The dot keeps its pre-icon-inset spot (9pt optical)
                     // instead of following the icons out to the 4pt inset.
                     .padding(.trailing, 5)

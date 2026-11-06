@@ -16,6 +16,19 @@ struct FolderActivityTests {
         return session
     }
 
+    @Test func sessionActivityReflectsItsOwnState() {
+        var tab = session()
+        #expect(tab.activity == nil)
+        tab.agentBusy = true
+        #expect(tab.activity == .working)
+        tab.status = .attention
+        tab.attentionKind = .needsInput
+        #expect(tab.activity == .waiting)
+        tab.attentionKind = .finishedResponding
+        #expect(tab.activity == .done)
+        #expect(session(sleeping: true).activity == nil)
+    }
+
     @Test func idleAndSleepingTabsHaveNoActivity() {
         #expect(TerminalFolder(title: "empty").activity == nil)
         let folder = TerminalFolder(title: "idle", sessions: [

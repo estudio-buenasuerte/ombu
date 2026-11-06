@@ -8,18 +8,31 @@ extension TerminalSession {
     enum AttentionKind: Hashable {
         case needsInput, finishedResponding
     }
+
+    var activity: FolderActivity? {
+        if status == .attention {
+            return attentionKind == .needsInput ? .waiting : .done
+        } else if agentBusy == true
+            || (agentBusy == nil && runningProcess != nil && !isSleeping) {
+            return .working
+        }
+        return nil
+    }
 }
 
 extension TerminalFolder {
     var activity: FolderActivity? {
         var result: FolderActivity?
         for session in allSessions {
-            if session.status == .attention {
-                if session.attentionKind == .needsInput { return .waiting }
+            switch session.activity {
+            case .waiting:
+                return .waiting
+            case .done:
                 if result == nil { result = .done }
-            } else if session.agentBusy == true
-                || (session.agentBusy == nil && session.runningProcess != nil && !session.isSleeping) {
+            case .working:
                 result = .working
+            case nil:
+                break
             }
         }
         return result
