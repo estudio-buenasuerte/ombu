@@ -332,7 +332,7 @@ final class GhosttySurfaceView: NSView, NSTextInputClient {
 
         if let texts = keyTextAccumulator, !texts.isEmpty {
             for text in texts {
-                sendKey(action: GHOSTTY_ACTION_PRESS, event: event, text: nil)
+                sendKey(action: GHOSTTY_ACTION_PRESS, event: event, text: text)
             }
         } else {
             sendKey(action: GHOSTTY_ACTION_PRESS, event: event, text: nil)
