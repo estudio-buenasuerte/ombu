@@ -11,6 +11,10 @@
 
 Ombú is the terminal I wanted for my own days: several projects open at once, a Claude or Codex session running in most of them, and a sidebar that tells me at a glance which one needs me. It is native, GPU-fast thanks to [libghostty](https://github.com/ghostty-org/ghostty), and shaped around one person's workflow rather than everyone's.
 
+## Install
+
+Download `Ombú-<version>.zip` from the [Releases page](https://github.com/estudio-buenasuerte/ombu/releases), unzip it, and drag Ombú to Applications. It's signed and notarized, and needs macOS 15 or later.
+
 ## Where it comes from
 
 Ombú stands on two terminals I admire.
