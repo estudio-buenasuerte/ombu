@@ -20,9 +20,7 @@ struct TerminalRootView: View {
     @State private var cardCornerRadius: CGFloat = WindowCornerRadiusReader.initialCardRadius
     @SceneStorage("selectedSessionID") private var storedSelection: String?
 
-    // Inactive-window chrome dim, the standard macOS treatment: sidebar text,
-    // icons, and tints drop toward grey while the window isn't key. The
-    // terminal card keeps its colors, as terminals conventionally do.
+    // Inactive windows flatten the materials without fading terminal glyphs.
     private var isWindowInactive: Bool { controlActiveState == .inactive }
 
     /// Sidebar-adjacent chrome (traffic lights, the sidebar toggle) shows
@@ -137,7 +135,7 @@ struct TerminalRootView: View {
         .background(WindowCornerRadiusReader { cardCornerRadius = $0 })
         .background(
             SidebarMaterial()
-                .overlay(Theme.windowWash)
+                .overlay(isWindowInactive ? Theme.panel : Theme.windowWash)
                 .ignoresSafeArea()
         )
         .ignoresSafeArea()
@@ -313,7 +311,7 @@ struct TerminalRootView: View {
                 // this opaque backdrop, not the column, to stay off the glass
                 // controls' ancestors.
                 SidebarMaterial()
-                    .overlay(Theme.windowWash)
+                    .overlay(isWindowInactive ? Theme.panel : Theme.windowWash)
                     .shadow(color: .black.opacity(0.45), radius: 30, x: 10)
             )
             .overlay(alignment: .trailing) {
@@ -953,7 +951,7 @@ private struct SidebarMaterial: NSViewRepresentable {
         let view = NSVisualEffectView()
         view.material = .sidebar
         view.blendingMode = .behindWindow
-        view.state = .active
+        view.state = .followsWindowActiveState
         return view
     }
 

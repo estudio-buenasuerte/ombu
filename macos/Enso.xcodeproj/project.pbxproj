@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		D8D6A8BD3A034945BC4F0011 /* TerminalBackdrop.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8D6A8BD3A034945BC4F0012 /* TerminalBackdrop.swift */; };
 		A100000A2FD810C30001BF12 /* EnsoApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000092FD810C30001BF12 /* EnsoApp.swift */; };
 		A100000C2FD810C30001BF12 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000B2FD810C30001BF12 /* ContentView.swift */; };
 		A1THEME012FD810C30001BF12 /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1THEME022FD810C30001BF12 /* AppTheme.swift */; };
@@ -87,6 +88,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		D8D6A8BD3A034945BC4F0012 /* TerminalBackdrop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalBackdrop.swift; sourceTree = "<group>"; };
 		070AC37B2FD810C30001BF12 /* Enso.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Enso.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		070AC3882FD810C50001BF12 /* EnsoTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = EnsoTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		070AC3922FD810C50001BF12 /* EnsoUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = EnsoUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -250,6 +252,7 @@
 			isa = PBXGroup;
 			children = (
 				A1THEME022FD810C30001BF12 /* AppTheme.swift */,
+				D8D6A8BD3A034945BC4F0012 /* TerminalBackdrop.swift */,
 				B850D9D4406D4816BE4E363A /* ChromeFont.swift */,
 				AC695D4B44A54FDC86FEA29C /* OpenRequest.swift */,
 				0B1AC28CB94FC789E5010000 /* FolderIcon.swift */,
@@ -503,6 +506,7 @@
 				A100000A2FD810C30001BF12 /* EnsoApp.swift in Sources */,
 				A100000C2FD810C30001BF12 /* ContentView.swift in Sources */,
 				A1THEME012FD810C30001BF12 /* AppTheme.swift in Sources */,
+				D8D6A8BD3A034945BC4F0011 /* TerminalBackdrop.swift in Sources */,
 				10BFA31A75704F2D91D09BED /* ChromeFont.swift in Sources */,
 				C86F1FC80DD648DA9796F2F4 /* OpenRequest.swift in Sources */,
 				A1PERFM012FD810C30001BF12 /* PerfMonitor.swift in Sources */,

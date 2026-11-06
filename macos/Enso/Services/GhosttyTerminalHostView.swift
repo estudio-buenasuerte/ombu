@@ -799,8 +799,8 @@ final class SplitDividerDotsView: NSView {
 /// — theme background, `Theme.ink` 9% hairline, the soft drop shadow, and
 /// continuous rounded corners at the card's own radius — applied per pane
 /// when the layout is split, so each pane reads as a mini terminal card
-/// sitting on the window chrome. The unsplit tab's chrome is drawn by the
-/// root view, so its lone card renders chromeless (flat theme background).
+/// sitting on the window chrome. The unsplit tab's outline belongs to the
+/// root view, but both layouts share the focus-aware terminal material.
 ///
 /// Structure: the outer view carries the shadow (masksToBounds off, with
 /// an explicit shadowPath so the Metal-backed content never forces
@@ -852,10 +852,13 @@ final class PaneCardView: NSView {
         content.wantsLayer = true
         content.layer?.masksToBounds = true
         content.layer?.cornerCurve = .continuous
-        content.layer?.backgroundColor = NSColor(GhosttyRuntime.shared.themeBackground).cgColor
         content.frame = bounds
         content.autoresizingMask = [.width, .height]
         addSubview(content)
+        let backdrop = TerminalBackdropView()
+        backdrop.frame = content.bounds
+        backdrop.autoresizingMask = [.width, .height]
+        content.addSubview(backdrop)
         // Inside the clipped content so the rounded corners contain it;
         // zPosition lifts it above the surface and header backing layers.
         scrimLayer.backgroundColor = NSColor(GhosttyRuntime.shared.themeBackground).cgColor
@@ -998,16 +1001,19 @@ struct PaneHeaderView: View {
     let onActivate: () -> Void
 
     var body: some View {
-        if compact {
-            CompactPaneHeader(
-                session: session,
-                store: store,
-                focused: focused,
-                onActivate: onActivate
-            )
-        } else {
-            FullPaneHeader(session: session, store: store, focused: focused)
+        Group {
+            if compact {
+                CompactPaneHeader(
+                    session: session,
+                    store: store,
+                    focused: focused,
+                    onActivate: onActivate
+                )
+            } else {
+                FullPaneHeader(session: session, store: store, focused: focused)
+            }
         }
+        .background(GhosttyRuntime.shared.themeBackground.opacity(GhosttyRuntime.shared.themeBackgroundOpacity))
     }
 }
 
@@ -2154,6 +2160,7 @@ struct PaneSleepingView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .contentShape(Rectangle())
         .onTapGesture(perform: onWake)
+        .background(GhosttyRuntime.shared.themeBackground.opacity(GhosttyRuntime.shared.themeBackgroundOpacity))
         // Ink keyed to the terminal background's luminance, like the pane
         // headers — the view sits on the Ghostty theme, not app chrome.
         .colorScheme(GhosttyRuntime.shared.terminalColorScheme)

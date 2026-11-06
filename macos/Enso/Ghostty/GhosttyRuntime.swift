@@ -17,6 +17,7 @@ final class GhosttyRuntime {
     /// Terminal background from the loaded ghostty config, so surrounding
     /// chrome (title strip, empty states) blends with the terminal theme.
     private(set) var themeBackground: Color = Color(red: 0.018, green: 0.019, blue: 0.023)
+    private(set) var themeBackgroundOpacity: Double = 1
 
     nonisolated private let tickLock = NSLock()
     nonisolated(unsafe) private var tickScheduled = false
@@ -249,6 +250,12 @@ final class GhosttyRuntime {
                 green: Double(background.g) / 255,
                 blue: Double(background.b) / 255
             )
+        }
+
+        var opacity: Double = 1
+        let opacityKey = "background-opacity"
+        if opacityKey.withCString({ ghostty_config_get(config, &opacity, $0, UInt(opacityKey.utf8.count)) }) {
+            themeBackgroundOpacity = opacity
         }
 
         return config

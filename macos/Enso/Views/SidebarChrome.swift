@@ -92,6 +92,25 @@ extension View {
     }
 }
 
+/// Selection stays legible without carrying an active glass highlight into
+/// an unfocused window. Reduce Transparency uses the same solid treatment.
+struct SidebarSelectionBackground: View {
+    @Environment(\.controlActiveState) private var controlActiveState
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: 16.5, style: .continuous)
+        if controlActiveState != .inactive && !reduceTransparency {
+            Color.clear.sidebarGlass(in: shape)
+        } else {
+            shape
+                .fill(colorScheme == .dark ? Color.white.opacity(0.1) : Color.white)
+                .overlay(shape.strokeBorder(Theme.ink.opacity(0.05), lineWidth: 1))
+        }
+    }
+}
+
 /// The sliding selection in both capsules: a plain neutral fill, because glass
 /// inside glass reads muddy. Only the capsules themselves are glass.
 struct SidebarThumb: View {

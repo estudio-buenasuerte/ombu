@@ -925,7 +925,6 @@ private struct SpacePage: View {
     /// close, the Settings toggle, and launch-time restorability resolution
     /// all publish, and each re-render re-asks dormantAgent(forTab:) below.
     @ObservedObject private var agentSessions = AgentSessionStore.shared
-    @Environment(\.colorScheme) private var colorScheme
     let space: SidebarSpace
 
     @State private var hoveredSessionID: TerminalSession.ID?
@@ -1819,9 +1818,7 @@ private struct SpacePage: View {
         }
     }
 
-    /// Selected tab background. In dark mode it's the familiar bright wash; in
-    /// light mode the selected row lifts off the sidebar as a solid white card
-    /// with a soft shadow rather than reading as a flat grey fill.
+    /// Glass distinguishes selection from the flat hover and multi-select washes.
     @ViewBuilder
     private func selectedRowBackground(
         isSelected: Bool,
@@ -1830,10 +1827,7 @@ private struct SpacePage: View {
     ) -> some View {
         let shape = RoundedRectangle(cornerRadius: 7)
         if isSelected {
-            shape
-                .fill(colorScheme == .light ? Color.white : Color.white.opacity(0.14))
-                .shadow(color: .black.opacity(0.14), radius: 0.40357, x: 0, y: 0.75)
-                .shadow(color: .black.opacity(0.06), radius: 2, x: 0, y: 2)
+            SidebarSelectionBackground()
         } else if isMultiSelected {
             shape.fill(Theme.ink.opacity(0.07))
         } else if isHovered {

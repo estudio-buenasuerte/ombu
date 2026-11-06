@@ -62,7 +62,12 @@ struct TerminalWorkspaceView: View {
                 }
             }
         }
-        .background(isSplitSelection ? Color.clear : GhosttyRuntime.shared.themeBackground)
+        .background {
+            if !isSplitSelection && (store.selectedSession == nil || sleepingSelection != nil) {
+                TerminalBackdrop()
+                    .overlay(GhosttyRuntime.shared.themeBackground.opacity(GhosttyRuntime.shared.themeBackgroundOpacity))
+            }
+        }
         // Space/tab switches run inside withAnimation; a cross-fade here
         // makes the SwiftUI pane headers and the Metal-backed terminal
         // (which can't fade) diverge, flashing the empty state through.
