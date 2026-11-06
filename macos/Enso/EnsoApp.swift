@@ -173,6 +173,7 @@ struct EnsoApp: App {
         // spawns a shell: shims on disk, and restore decisions made against
         // the loaded tabs (which also drives orphan GC of old map files).
         let store = TerminalSessionStore()
+        store.landOnDefaultDirectory(DefaultDirectory.resolve())
         _sessionStore = StateObject(wrappedValue: store)
         AgentShimInstaller.installIfNeeded()
         // Bootstrap resolves restorability on a background task (transcript

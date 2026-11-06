@@ -1212,6 +1212,47 @@ struct TerminalSessionStoreTests {
         #expect(session.isSleeping)
         #expect(session.sleepingProcess == nil)
     }
+
+    @Test func defaultDirectoryLandingReusesAwakeEphemeralTab() throws {
+        let directory = try makeTempDirectory("default-reuse")
+        defer { try? FileManager.default.removeItem(atPath: directory) }
+        let pinned = TerminalSession(title: "pinned", workingDirectory: directory)
+        let ephemeral = TerminalSession(title: "plain", workingDirectory: directory)
+        let space = SidebarSpace(
+            name: "Main",
+            pinnedFolders: [TerminalFolder(title: "project", sessions: [pinned])],
+            ephemeralSessions: [ephemeral],
+            lastSelection: pinned.id
+        )
+        let store = TerminalSessionStore(spaces: [space], persistToDisk: false)
+
+        store.landOnDefaultDirectory(directory)
+
+        #expect(store.selection == ephemeral.id)
+        #expect(store.activeSpaceID == space.id)
+        #expect(Set(store.sessions.map(\.id)) == [pinned.id, ephemeral.id])
+        #expect(store.activeSpace.ephemeralSessions.map(\.id) == [ephemeral.id])
+    }
+
+    @Test func defaultDirectoryLandingCreatesEphemeralTab() throws {
+        let directory = try makeTempDirectory("default-create")
+        defer { try? FileManager.default.removeItem(atPath: directory) }
+        let pinned = TerminalSession(title: "pinned", workingDirectory: directory)
+        let store = makeStore(
+            folder: TerminalFolder(title: "project", sessions: [pinned]), select: pinned.id
+        )
+        let spaceID = store.activeSpaceID
+
+        store.landOnDefaultDirectory(directory)
+
+        let created = try #require(store.activeSpace.ephemeralSessions.first)
+        #expect(store.activeSpaceID == spaceID)
+        #expect(store.activeSpace.ephemeralSessions.count == 1)
+        #expect(created.workingDirectory == directory)
+        #expect(!created.isSleeping)
+        #expect(store.selection == created.id)
+        #expect(Set(store.sessions.map(\.id)) == [pinned.id, created.id])
+    }
 }
 
 /// What the close confirmation decides to stop the user for. The tabs with

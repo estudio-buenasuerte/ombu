@@ -229,6 +229,18 @@ final class TerminalSessionStore: ObservableObject {
         setSelection(activeSpace.lastSelection ?? activeSpace.sessions.first?.id, waking: false)
     }
 
+    /// Launch landing for Ombú: the user starts in their default folder, not
+    /// wherever they were looking when they quit.
+    func landOnDefaultDirectory(_ directory: String) {
+        if let found = activeSpace.ephemeralSessions
+            .filter({ $0.workingDirectory == directory && !$0.isSleeping })
+            .max(by: { $0.lastActivity < $1.lastActivity }) {
+            activateSpace(activeSpaceID, selecting: found.id)
+        } else {
+            createSession(workingDirectory: directory)
+        }
+    }
+
     // MARK: - Spaces
 
     var activeSpace: SidebarSpace {
