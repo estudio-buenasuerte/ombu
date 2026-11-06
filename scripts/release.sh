@@ -132,5 +132,8 @@ shasum -a 256 "$zip"
 echo "==> Publish GitHub release"
 git tag -a "$tag" -m "Ombú $version"
 git push origin "$tag"
-release_url="$(gh release create "$tag" "$zip" --title "Ombú $version" --generate-notes)"
+# gh picks a default repository among all remotes, which here includes the
+# upstream forks, so name origin explicitly.
+release_url="$(gh release create "$tag" "$zip" --repo "$(git remote get-url origin)" \
+    --title "Ombú $version" --generate-notes)"
 printf '%s\n' "$release_url"

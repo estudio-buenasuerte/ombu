@@ -13,7 +13,7 @@ Ombú is the terminal I wanted for my own days: several projects open at once, a
 
 ## Install
 
-Download `Ombú-<version>.zip` from the [Releases page](https://github.com/estudio-buenasuerte/ombu/releases), unzip it, and drag Ombú to Applications. It's signed and notarized, and needs macOS 15 or later.
+Download `Ombu-<version>.zip` from the [Releases page](https://github.com/estudio-buenasuerte/ombu/releases), unzip it, and drag Ombú to Applications. It's signed and notarized, and needs macOS 15 or later.
 
 ## Where it comes from
 
